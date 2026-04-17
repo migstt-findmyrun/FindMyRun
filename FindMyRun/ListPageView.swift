@@ -7,6 +7,7 @@ import SwiftUI
 import MapKit
 
 struct ListPageView: View {
+    @Environment(AppSettings.self) private var appSettings
     @State private var listService = RunService()
     @State private var selectedRun: Run?
     @Namespace private var animation
@@ -70,7 +71,7 @@ struct ListPageView: View {
                             myRuns.toggle(run)
                         } label: {
                             Image(systemName: myRuns.isSaved(run.id) ? "bookmark.fill" : "bookmark")
-                                .foregroundStyle(myRuns.isSaved(run.id) ? .orange : .secondary)
+                                .foregroundStyle(myRuns.isSaved(run.id) ? appSettings.themeColor : .secondary)
                         }
                     }
                     ToolbarItem(placement: .topBarTrailing) {
@@ -80,7 +81,7 @@ struct ListPageView: View {
                             }
                         }
                         .fontWeight(.semibold)
-                        .tint(.orange)
+                        
                     }
                 }
             }
@@ -140,7 +141,7 @@ struct ListPageView: View {
                 span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
             ))) {
                 Marker(run.address ?? "Start", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng))
-                    .tint(.orange)
+                    
             }
             .mapStyle(.standard(elevation: .realistic))
             .ignoresSafeArea(edges: .bottom)

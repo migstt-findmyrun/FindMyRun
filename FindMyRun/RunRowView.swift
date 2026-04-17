@@ -12,6 +12,7 @@ struct RunRowView: View {
     var isFetchingForecast: Bool = false
     @Environment(LocationService.self) private var locationService
     @Environment(FavoritesManager.self) private var favorites
+    @Environment(AppSettings.self) private var appSettings
     @State private var showingClubDetail = false
 
     private var distanceToStart: String? {
@@ -58,7 +59,7 @@ struct RunRowView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .background(.orange.gradient, in: Capsule())
+                    .background(appSettings.themeColor.gradient, in: Capsule())
             }
 
             HStack(spacing: 14) {
@@ -90,7 +91,7 @@ struct RunRowView: View {
                     Spacer()
                     Label(distance, systemImage: "location.fill")
                         .font(.caption2)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(appSettings.themeColor)
                 }
             }
 

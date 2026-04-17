@@ -16,6 +16,7 @@ struct SearchCardView: View {
     let clubs: [Club]
     let favorites: FavoritesManager
     let onSearch: () -> Void
+    @Environment(AppSettings.self) private var appSettings
     @State private var showClubPicker = false
 
     var body: some View {
@@ -89,7 +90,7 @@ struct SearchCardView: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
             }
-            .tint(.orange)
+            
 
             Divider()
 
@@ -117,7 +118,7 @@ struct SearchCardView: View {
                         .foregroundStyle(.white)
                         .padding(.vertical, 10)
                         .padding(.horizontal, 24)
-                        .background(.orange, in: RoundedRectangle(cornerRadius: 12))
+                        .background(appSettings.themeColor, in: RoundedRectangle(cornerRadius: 12))
                 }
             }
         }
@@ -139,6 +140,7 @@ struct SearchCardView: View {
 private struct DistanceRangeFilter: View {
     @Binding var minKm: Double
     @Binding var maxKm: Double
+    @Environment(AppSettings.self) private var appSettings
 
     private let steps: [Double] = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
     private let thumbR: CGFloat = 13
@@ -158,7 +160,7 @@ private struct DistanceRangeFilter: View {
                 Text(rangeLabel)
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(appSettings.themeColor)
             }
 
             GeometryReader { geo in
@@ -176,7 +178,7 @@ private struct DistanceRangeFilter: View {
 
                     // Orange fill between thumbs
                     Rectangle()
-                        .fill(.orange)
+                        .fill(appSettings.themeColor)
                         .frame(width: max(0, maxX - minX), height: trackH)
                         .offset(x: minX)
 
@@ -213,7 +215,7 @@ private struct DistanceRangeFilter: View {
             .fill(.white)
             .frame(width: thumbR * 2, height: thumbR * 2)
             .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
-            .overlay(Circle().stroke(.orange, lineWidth: 2))
+            .overlay(Circle().stroke(appSettings.themeColor, lineWidth: 2))
     }
 
     private var rangeLabel: String {
@@ -230,6 +232,7 @@ struct ClubPickerView: View {
     @Binding var selectedIds: Set<String>
     let favorites: FavoritesManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppSettings.self) private var appSettings
 
     var body: some View {
         NavigationStack {
@@ -239,7 +242,7 @@ struct ClubPickerView: View {
                         favorites.toggle(club.id)
                     } label: {
                         Image(systemName: favorites.isFavorite(club.id) ? "star.fill" : "star")
-                            .foregroundStyle(favorites.isFavorite(club.id) ? .yellow : .gray)
+                            .foregroundStyle(favorites.isFavorite(club.id) ? .yellow : appSettings.themeColor)
                     }
                     .buttonStyle(.plain)
 
@@ -249,7 +252,7 @@ struct ClubPickerView: View {
                     Spacer()
 
                     Image(systemName: selectedIds.contains(club.id) ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(selectedIds.contains(club.id) ? .orange : Color(.tertiaryLabel))
+                        .foregroundStyle(selectedIds.contains(club.id) ? appSettings.themeColor : Color(.tertiaryLabel))
                         .font(.title3)
                 }
                 .contentShape(Rectangle())
@@ -268,12 +271,12 @@ struct ClubPickerView: View {
                     Button("Clear") {
                         selectedIds.removeAll()
                     }
-                    .tint(.orange)
+                    
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                         .fontWeight(.semibold)
-                        .tint(.orange)
+                        
                 }
             }
         }

@@ -224,7 +224,7 @@ struct RunDatePickerView: View {
                     .foregroundStyle(.white)
                     .padding(.vertical, 10)
                     .padding(.horizontal, 24)
-                    .background(.orange, in: RoundedRectangle(cornerRadius: 12))
+                    .background(.gray, in: RoundedRectangle(cornerRadius: 12))
             }
         }
     }
@@ -251,14 +251,14 @@ private struct DayCell: View {
                 // Range background
                 if inRange && !isStart && !isEnd {
                     Rectangle()
-                        .fill(.orange.opacity(0.15))
+                        .fill(.gray.opacity(0.15))
                         .frame(height: 36)
                 }
 
                 // Start/end caps
                 if isStart || isEnd {
                     Circle()
-                        .fill(.orange)
+                        .fill(.gray)
                         .frame(width: 34, height: 34)
                 }
 

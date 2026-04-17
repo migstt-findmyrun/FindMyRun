@@ -27,7 +27,7 @@ struct QuickSearchCard: View {
             QuickAction(
                 icon: "map.fill",
                 label: "Maps",
-                color: .orange,
+                color: .gray,
                 enabled: true,
                 action: onMaps
             )
@@ -38,7 +38,7 @@ struct QuickSearchCard: View {
             QuickAction(
                 icon: "list.bullet",
                 label: "List",
-                color: .orange,
+                color: .gray,
                 enabled: true,
                 action: onList
             )

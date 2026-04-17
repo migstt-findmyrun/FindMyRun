@@ -8,6 +8,7 @@ import SwiftUI
 struct ClubDetailView: View {
     let club: Club
     let favorites: FavoritesManager
+    @Environment(AppSettings.self) private var appSettings
 
     var body: some View {
         ScrollView {
@@ -80,7 +81,7 @@ struct ClubDetailView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "person.3.fill")
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(appSettings.themeColor)
                     Text("\(memberCount) members")
                         .font(.subheadline)
                         .fontWeight(.medium)
@@ -118,7 +119,7 @@ struct ClubDetailView: View {
                         HStack {
                             Image(systemName: "globe")
                                 .font(.body)
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(appSettings.themeColor)
                                 .frame(width: 28)
                             Text("Club Website")
                                 .font(.subheadline)
@@ -141,7 +142,7 @@ struct ClubDetailView: View {
                         HStack {
                             Image(systemName: "figure.run.circle.fill")
                                 .font(.body)
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(appSettings.themeColor)
                                 .frame(width: 28)
                             Text("View on Strava")
                                 .font(.subheadline)

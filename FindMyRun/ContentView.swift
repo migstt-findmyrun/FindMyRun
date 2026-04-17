@@ -12,6 +12,7 @@ struct ContentView: View {
     @State private var favorites = FavoritesManager()
     @State private var notifications = NotificationManager()
     @State private var myRuns = MyRunsManager()
+    @State private var appSettings = AppSettings()
     @State private var selectedTab: AppTab = .maps
 
     // Search filters
@@ -47,12 +48,14 @@ struct ContentView: View {
             }
 
         }
-        .tint(.orange)
+        .tint(appSettings.themeColor)
+        .toolbarBackground(Color.white, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .environment(locationService)
         .environment(favorites)
         .environment(myRuns)
         .environment(notifications)
+        .environment(appSettings)
         .onAppear {
             locationService.requestPermission()
         }

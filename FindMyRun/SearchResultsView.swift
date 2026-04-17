@@ -10,6 +10,7 @@ struct SearchResultsView: View {
     let runService: RunService
     @Environment(\.dismiss) private var dismiss
     @Environment(MyRunsManager.self) private var myRuns
+    @Environment(AppSettings.self) private var appSettings
     @State private var selectedRun: Run?
     @State private var forecast: DayForecast?
     @State private var isFetchingForecast = false
@@ -75,7 +76,7 @@ struct SearchResultsView: View {
                             myRuns.toggle(run)
                         } label: {
                             Image(systemName: myRuns.isSaved(run.id) ? "bookmark.fill" : "bookmark")
-                                .foregroundStyle(myRuns.isSaved(run.id) ? .orange : .secondary)
+                                .foregroundStyle(myRuns.isSaved(run.id) ? appSettings.themeColor : .secondary)
                         }
                     }
                 }
@@ -91,7 +92,7 @@ struct SearchResultsView: View {
                         }
                     }
                     .fontWeight(.semibold)
-                    .tint(.orange)
+                    
                 }
             }
         }
@@ -147,7 +148,7 @@ struct SearchResultsView: View {
                 span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
             ))) {
                 Marker(run.address ?? "Start", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng))
-                    .tint(.orange)
+                    
             }
             .mapStyle(.standard(elevation: .realistic))
             .ignoresSafeArea(edges: .bottom)
@@ -214,7 +215,7 @@ struct RouteMapView: View {
     var forecast: DayForecast?
 
     private var polylineColor: Color {
-        forecast?.routeColor.swiftUIColor ?? .orange
+        forecast?.routeColor.swiftUIColor ?? .gray
     }
 
     var body: some View {
@@ -279,11 +280,11 @@ struct RouteMapView: View {
 extension RouteWeatherColor {
     var swiftUIColor: Color {
         switch self {
-        case .clear:        return Color.orange
+        case .clear:        return Color.gray
         case .cloudy:       return Color.gray
         case .fog:          return Color(red: 0.6, green: 0.6, blue: 0.7)
         case .lightRain:    return Color.cyan
-        case .rain:         return Color.blue
+        case .rain:         return Color.gray
         case .freezingRain: return Color(red: 0.4, green: 0.5, blue: 0.8)
         case .snow:         return Color(red: 0.6, green: 0.7, blue: 1.0)
         case .storm:        return Color.purple

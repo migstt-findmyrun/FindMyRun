@@ -8,14 +8,21 @@ import UserNotifications
 
 @Observable
 final class NotificationManager {
-    private static let enabledKey = "runNotificationsEnabled"
+    private static let enabledKey  = "runNotificationsEnabled"
+    private static let advanceKey  = "runNotificationAdvanceHours"
+
+    static let advanceOptions: [Int] = [1, 2, 4, 6, 12, 24, 48]
 
     var notificationsEnabled: Bool {
         didSet {
             UserDefaults.standard.set(notificationsEnabled, forKey: Self.enabledKey)
-            if !notificationsEnabled {
-                cancelAllRunNotifications()
-            }
+            if !notificationsEnabled { cancelAllRunNotifications() }
+        }
+    }
+
+    var advanceHours: Int {
+        didSet {
+            UserDefaults.standard.set(advanceHours, forKey: Self.advanceKey)
         }
     }
 
@@ -23,6 +30,8 @@ final class NotificationManager {
 
     init() {
         notificationsEnabled = UserDefaults.standard.bool(forKey: Self.enabledKey)
+        let stored = UserDefaults.standard.integer(forKey: Self.advanceKey)
+        advanceHours = stored > 0 ? stored : 24
     }
 
     func requestPermission() async -> Bool {
@@ -43,11 +52,11 @@ final class NotificationManager {
 
     func schedule(for run: Run) {
         guard notificationsEnabled else { return }
-        let triggerDate = run.occursAt.addingTimeInterval(-24 * 60 * 60)
+        let triggerDate = run.occursAt.addingTimeInterval(-Double(advanceHours) * 3600)
         guard triggerDate > Date() else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = "Run tomorrow!"
+        content.title = advanceHours >= 24 ? "Run tomorrow!" : "Run in \(advanceHours)h!"
         content.body = "\(run.title) · \(run.clubs.name) at \(timeString(run.occursAt))"
         content.sound = .default
 

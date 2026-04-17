@@ -8,6 +8,7 @@ import SwiftUI
 struct FavoritesPageView: View {
     let allClubs: [Club]
     let favorites: FavoritesManager
+    @Environment(AppSettings.self) private var appSettings
     @State private var favService = RunService()
     @State private var localClubs: [Club] = []
     @State private var clubsExpanded = false
@@ -87,13 +88,13 @@ struct FavoritesPageView: View {
                     } label: {
                         HStack {
                             Label("Favourite Clubs", systemImage: "star.circle.fill")
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(appSettings.themeColor)
                                 .fontWeight(.semibold)
                             Spacer()
                             if !favorites.favoriteClubIds.isEmpty {
                                 Text("\(favorites.favoriteClubIds.count) selected")
                                     .font(.caption)
-                                    .foregroundStyle(.orange)
+                                    .foregroundStyle(appSettings.themeColor)
                             }
                             Image(systemName: clubsExpanded ? "chevron.up" : "chevron.down")
                                 .font(.caption)
@@ -143,7 +144,7 @@ struct FavoritesPageView: View {
                                     .fontWeight(.semibold)
                                 Spacer()
                                 Text("\(group.runs.count) run\(group.runs.count == 1 ? "" : "s")")
-                                    .foregroundStyle(.orange)
+                                    .foregroundStyle(appSettings.themeColor)
                             }
                         }
                     }

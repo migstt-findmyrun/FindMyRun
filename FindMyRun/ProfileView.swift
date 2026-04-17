@@ -28,7 +28,7 @@ struct ProfileView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                         .fontWeight(.semibold)
-                        .tint(.orange)
+                        
                 }
             }
         }
@@ -40,7 +40,7 @@ struct ProfileView: View {
         VStack(spacing: 20) {
             Image(systemName: "figure.run.circle.fill")
                 .font(.system(size: 72))
-                .foregroundStyle(.orange)
+                .foregroundStyle(.gray)
 
             Text("Connect with Strava")
                 .font(.title2)
@@ -66,7 +66,7 @@ struct ProfileView: View {
                 .padding(.vertical, 12)
             }
             .buttonStyle(.borderedProminent)
-            .tint(.orange)
+            
             .padding(.horizontal)
 
             if stravaService.isLoading {
@@ -98,7 +98,7 @@ struct ProfileView: View {
                         } placeholder: {
                             Image(systemName: "person.circle.fill")
                                 .font(.system(size: 64))
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(.gray)
                         }
                         .frame(width: 80, height: 80)
                         .clipShape(Circle())
@@ -199,7 +199,7 @@ private struct StatItem: View {
         VStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.caption)
-                .foregroundStyle(.orange)
+                .foregroundStyle(.gray)
             Text(value)
                 .font(.caption)
                 .fontWeight(.bold)

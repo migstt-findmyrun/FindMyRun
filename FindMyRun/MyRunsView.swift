@@ -8,6 +8,7 @@ import SwiftUI
 struct MyRunsView: View {
     let myRuns: MyRunsManager
     @Environment(NotificationManager.self) private var notifications
+    @Environment(AppSettings.self) private var appSettings
     @State private var selectedRun: Run?
     @State private var showPermissionAlert = false
 
@@ -48,7 +49,7 @@ struct MyRunsView: View {
                         Task { await toggleNotifications() }
                     } label: {
                         Image(systemName: notifications.notificationsEnabled ? "bell.fill" : "bell.slash")
-                            .foregroundStyle(notifications.notificationsEnabled ? .orange : .secondary)
+                            .foregroundStyle(notifications.notificationsEnabled ? appSettings.themeColor : .secondary)
                     }
                 }
             }

@@ -8,6 +8,7 @@ import MapKit
 
 struct MapPageView: View {
     @Environment(LocationService.self) private var locationService
+    @Environment(AppSettings.self) private var appSettings
     @State private var mapService = RunService()
     @State private var radiusKm: Double = 10
     @State private var showLocationSearch = false
@@ -92,6 +93,8 @@ struct MapPageView: View {
         }
     }
 
+    @State private var showSettings = false
+
     var body: some View {
         ZStack(alignment: .top) {
             Map(position: $cameraPosition) {
@@ -113,8 +116,8 @@ struct MapPageView: View {
                 // Radius circle around active search centre
                 if let center = activeLocation {
                     MapCircle(center: center, radius: radiusKm * 1000)
-                        .foregroundStyle(.orange.opacity(0.07))
-                        .stroke(.orange.opacity(0.25), lineWidth: 1)
+                        .foregroundStyle(appSettings.themeColor.opacity(0.07))
+                        .stroke(appSettings.themeColor.opacity(0.25), lineWidth: 1)
                 }
 
                 // Run markers — with per-cluster offset to separate overlapping pins
@@ -127,7 +130,7 @@ struct MapPageView: View {
                             ZStack {
                                 Image(systemName: "figure.run.circle.fill")
                                     .font(.title)
-                                    .foregroundStyle(.white, hasRoute ? .red : .orange)
+                                    .foregroundStyle(.white, hasRoute ? .red : appSettings.themeColor)
                                     .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
                                 if placement.isApproximate {
                                     Circle()
@@ -142,27 +145,37 @@ struct MapPageView: View {
             }
             .mapStyle(.standard(elevation: .flat))
             .mapControlVisibility(.hidden)
-            .ignoresSafeArea(edges: .bottom)
+            .ignoresSafeArea(edges: .top)
 
             // Controls overlay
             VStack(alignment: .leading, spacing: 8) {
                 // Title card
-                VStack(spacing: 4) {
+                VStack(spacing: 6) {
                     Text("Find My Run")
-                        .font(.title2)
+                        .font(.title)
                         .fontWeight(.bold)
                         .fontDesign(.rounded)
                         .foregroundStyle(.red)
                     Text("Discover group runs near you — find your crew, pick a route, and go.")
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.8))
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .padding(.horizontal, 16)
+                .padding(.vertical, 20)
+                .padding(.horizontal, 20)
                 .background(Color(.darkGray).opacity(0.92), in: RoundedRectangle(cornerRadius: 16))
                 .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
+                .overlay(alignment: .topTrailing) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.title3)
+                            .foregroundStyle(.white.opacity(0.6))
+                            .padding(12)
+                    }
+                }
 
                 // Location button
                 HStack(spacing: 8) {
@@ -176,9 +189,11 @@ struct MapPageView: View {
                                 .font(.caption)
                                 .fontWeight(.medium)
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(.ultraThickMaterial, in: Capsule())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Color(.darkGray).opacity(0.92), in: Capsule())
+                        .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                     }
 
                     if customLocation != nil {
@@ -193,19 +208,21 @@ struct MapPageView: View {
                                     .font(.caption)
                                     .fontWeight(.medium)
                             }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(.ultraThickMaterial, in: Capsule())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(Color(.darkGray).opacity(0.92), in: Capsule())
+                            .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                         }
                     }
                 }
 
                 // Search radius
                 HStack(spacing: 6) {
-                    Text("Search Radius:")
+                    Text("Radius:")
                         .font(.caption)
                         .fontWeight(.medium)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.7))
 
                     ForEach([5.0, 10.0, 20.0, 50.0], id: \.self) { r in
                         Button {
@@ -215,17 +232,18 @@ struct MapPageView: View {
                             Text("\(Int(r)) km")
                                 .font(.caption)
                                 .fontWeight(radiusKm == r ? .bold : .regular)
-                                .foregroundStyle(radiusKm == r ? .white : .primary)
+                                .foregroundStyle(.white)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 5)
-                                .background(radiusKm == r ? Color.orange : Color.clear, in: Capsule())
-                                .overlay(Capsule().stroke(radiusKm == r ? Color.clear : Color.secondary.opacity(0.4), lineWidth: 1))
+                                .background(radiusKm == r ? Color.white.opacity(0.25) : Color.clear, in: Capsule())
+                                .overlay(Capsule().stroke(radiusKm == r ? Color.clear : Color.white.opacity(0.3), lineWidth: 1))
                         }
                     }
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(Color(.darkGray).opacity(0.92), in: RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
 
                 // Legend + today filter
                 HStack(spacing: 8) {
@@ -237,19 +255,22 @@ struct MapPageView: View {
                             Text("Has route")
                                 .font(.caption2)
                                 .fontWeight(.medium)
+                                .foregroundStyle(.white)
                         }
                         HStack(spacing: 4) {
                             Image(systemName: "figure.run.circle.fill")
-                                .foregroundStyle(.white, .orange)
+                                .foregroundStyle(.white, appSettings.themeColor)
                                 .font(.callout)
                             Text("No route")
                                 .font(.caption2)
                                 .fontWeight(.medium)
+                                .foregroundStyle(.white)
                         }
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(.ultraThickMaterial, in: Capsule())
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color(.darkGray).opacity(0.92), in: Capsule())
+                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
 
                     Button {
                         onlyToday.toggle()
@@ -261,11 +282,11 @@ struct MapPageView: View {
                                 .font(.caption)
                                 .fontWeight(.medium)
                         }
-                        .foregroundStyle(onlyToday ? .white : .primary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(onlyToday ? Color.orange : Color.clear, in: Capsule())
-                        .background(.ultraThickMaterial, in: Capsule())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(onlyToday ? Color.white.opacity(0.25) : Color(.darkGray).opacity(0.92), in: Capsule())
+                        .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                     }
                 }
             }
@@ -273,9 +294,9 @@ struct MapPageView: View {
             .padding(.top, 8)
 
         }
-        .toolbarBackground(Color.black, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
         .task(id: activeLocation?.latitude) {
             guard activeLocation != nil else { return }
             fetchAndRecenter()
@@ -304,9 +325,15 @@ struct MapPageView: View {
         guard let loc = activeLocation else { return }
         // 1 degree ≈ 111 km; add 30% padding around the search radius
         let span = (radiusKm / 111.0) * 2.3
+        // Shift center 25% north so the user location sits 25% below the screen midpoint,
+        // keeping it visible below the overlay controls at the top
+        let offsetCenter = CLLocationCoordinate2D(
+            latitude: loc.latitude + span * 0.25,
+            longitude: loc.longitude
+        )
         withAnimation {
             cameraPosition = .region(MKCoordinateRegion(
-                center: loc,
+                center: offsetCenter,
                 span: MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span)
             ))
         }
@@ -324,6 +351,7 @@ struct RunDetailSheet: View {
     let run: Run
     @Environment(\.dismiss) private var dismiss
     @Environment(MyRunsManager.self) private var myRuns
+    @Environment(AppSettings.self) private var appSettings
     @State private var forecast: DayForecast?
     @State private var isFetchingForecast = false
 
@@ -355,19 +383,18 @@ struct RunDetailSheet: View {
                         myRuns.toggle(run)
                     } label: {
                         Image(systemName: myRuns.isSaved(run.id) ? "bookmark.fill" : "bookmark")
-                            .foregroundStyle(myRuns.isSaved(run.id) ? .orange : .secondary)
+                            .foregroundStyle(myRuns.isSaved(run.id) ? appSettings.themeColor : .secondary)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                         .fontWeight(.semibold)
-                        .tint(.orange)
                 }
             }
             .task {
                 isFetchingForecast = true
-                let lat = run.startLat ?? 43.6532
-                let lng = run.startLng ?? -79.3832
+                let lat = run.startLat ?? run.clubs.latitude ?? 43.6532
+                let lng = run.startLng ?? run.clubs.longitude ?? -79.3832
                 forecast = await WeatherService.fetchForecast(for: run.occursAt, latitude: lat, longitude: lng)
                 isFetchingForecast = false
             }
@@ -376,13 +403,14 @@ struct RunDetailSheet: View {
 
     @ViewBuilder
     private var mapFallback: some View {
-        if let lat = run.startLat, let lng = run.startLng {
+        let lat = run.startLat ?? run.clubs.latitude
+        let lng = run.startLng ?? run.clubs.longitude
+        if let lat, let lng {
             Map(initialPosition: .region(MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: lat, longitude: lng),
                 span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
             ))) {
-                Marker(run.address ?? "Start", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng))
-                    .tint(.orange)
+                Marker(run.address ?? run.clubs.name, coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng))
             }
             .mapStyle(.standard(elevation: .flat))
             .ignoresSafeArea(edges: .bottom)
@@ -436,7 +464,7 @@ struct LocationSearchView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cancel") { dismiss() }
-                        .tint(.orange)
+                        
                 }
             }
             .onChange(of: searchText) { _, query in
