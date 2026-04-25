@@ -85,7 +85,6 @@ struct SettingsView: View {
     }
 
     private var presetColors: [(label: String, color: Color)] {[
-        ("Dark Grey", Color(.darkGray)),
         ("Blue",      .blue),
         ("Red",       .red),
         ("Green",     Color(red: 0.2, green: 0.6, blue: 0.3)),

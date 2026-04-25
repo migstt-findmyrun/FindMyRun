@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		8B3D1FBD2F9C23BE00815A49 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8B3D1FBC2F9C23BE00815A49 /* WidgetKit.framework */; };
+		8B3D1FBF2F9C23BE00815A49 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8B3D1FBE2F9C23BE00815A49 /* SwiftUI.framework */; };
+		8B3D1FCE2F9C23BF00815A49 /* FindMyRunWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8B3D1FBA2F9C23BE00815A49 /* FindMyRunWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		8B04E95E2F89ABE200F42874 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,15 +27,54 @@
 			remoteGlobalIDString = 8B04E94D2F89ABE100F42874;
 			remoteInfo = FindMyRun;
 		};
+		8B3D1FCC2F9C23BF00815A49 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8B04E9462F89ABE100F42874 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8B3D1FB92F9C23BE00815A49;
+			remoteInfo = FindMyRunWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		8B3D1FD32F9C23BF00815A49 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				8B3D1FCE2F9C23BF00815A49 /* FindMyRunWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		8B04E94E2F89ABE100F42874 /* FindMyRun.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FindMyRun.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8B04E95D2F89ABE200F42874 /* FindMyRunTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FindMyRunTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8B04E9672F89ABE200F42874 /* FindMyRunUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FindMyRunUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8B3D1FBA2F9C23BE00815A49 /* FindMyRunWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FindMyRunWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8B3D1FBC2F9C23BE00815A49 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		8B3D1FBE2F9C23BE00815A49 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		8B3D1FD42F9C240C00815A49 /* FindMyRunWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FindMyRunWidgetExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8B3D1FD22F9C23BF00815A49 /* Exceptions for "FindMyRunWidget" folder in "FindMyRunWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8B3D1FB92F9C23BE00815A49 /* FindMyRunWidgetExtension */;
+		};
+		8B3D1FD82F9C273C00815A49 /* Exceptions for "FindMyRun" folder in "FindMyRunWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				SharedRunStore.swift,
+			);
+			target = 8B3D1FB92F9C23BE00815A49 /* FindMyRunWidgetExtension */;
+		};
 		8BA0EE0A2F89D837003EEC53 /* Exceptions for "FindMyRun" folder in "FindMyRun" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -44,6 +89,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				8BA0EE0A2F89D837003EEC53 /* Exceptions for "FindMyRun" folder in "FindMyRun" target */,
+				8B3D1FD82F9C273C00815A49 /* Exceptions for "FindMyRun" folder in "FindMyRunWidgetExtension" target */,
 			);
 			path = FindMyRun;
 			sourceTree = "<group>";
@@ -56,6 +102,14 @@
 		8B04E96A2F89ABE200F42874 /* FindMyRunUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = FindMyRunUITests;
+			sourceTree = "<group>";
+		};
+		8B3D1FC02F9C23BE00815A49 /* FindMyRunWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8B3D1FD22F9C23BF00815A49 /* Exceptions for "FindMyRunWidget" folder in "FindMyRunWidgetExtension" target */,
+			);
+			path = FindMyRunWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -82,15 +136,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8B3D1FB72F9C23BE00815A49 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8B3D1FBF2F9C23BE00815A49 /* SwiftUI.framework in Frameworks */,
+				8B3D1FBD2F9C23BE00815A49 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		8B04E9452F89ABE000F42874 = {
 			isa = PBXGroup;
 			children = (
+				8B3D1FD42F9C240C00815A49 /* FindMyRunWidgetExtension.entitlements */,
 				8B04E9502F89ABE100F42874 /* FindMyRun */,
 				8B04E9602F89ABE200F42874 /* FindMyRunTests */,
 				8B04E96A2F89ABE200F42874 /* FindMyRunUITests */,
+				8B3D1FC02F9C23BE00815A49 /* FindMyRunWidget */,
+				8B3D1FBB2F9C23BE00815A49 /* Frameworks */,
 				8B04E94F2F89ABE100F42874 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -101,8 +167,18 @@
 				8B04E94E2F89ABE100F42874 /* FindMyRun.app */,
 				8B04E95D2F89ABE200F42874 /* FindMyRunTests.xctest */,
 				8B04E9672F89ABE200F42874 /* FindMyRunUITests.xctest */,
+				8B3D1FBA2F9C23BE00815A49 /* FindMyRunWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		8B3D1FBB2F9C23BE00815A49 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				8B3D1FBC2F9C23BE00815A49 /* WidgetKit.framework */,
+				8B3D1FBE2F9C23BE00815A49 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -115,10 +191,12 @@
 				8B04E94A2F89ABE100F42874 /* Sources */,
 				8B04E94B2F89ABE100F42874 /* Frameworks */,
 				8B04E94C2F89ABE100F42874 /* Resources */,
+				8B3D1FD32F9C23BF00815A49 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				8B3D1FCD2F9C23BF00815A49 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				8B04E9502F89ABE100F42874 /* FindMyRun */,
@@ -176,6 +254,28 @@
 			productReference = 8B04E9672F89ABE200F42874 /* FindMyRunUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		8B3D1FB92F9C23BE00815A49 /* FindMyRunWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8B3D1FCF2F9C23BF00815A49 /* Build configuration list for PBXNativeTarget "FindMyRunWidgetExtension" */;
+			buildPhases = (
+				8B3D1FB62F9C23BE00815A49 /* Sources */,
+				8B3D1FB72F9C23BE00815A49 /* Frameworks */,
+				8B3D1FB82F9C23BE00815A49 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				8B3D1FC02F9C23BE00815A49 /* FindMyRunWidget */,
+			);
+			name = FindMyRunWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = FindMyRunWidgetExtension;
+			productReference = 8B3D1FBA2F9C23BE00815A49 /* FindMyRunWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -197,6 +297,9 @@
 						CreatedOnToolsVersion = 26.4;
 						TestTargetID = 8B04E94D2F89ABE100F42874;
 					};
+					8B3D1FB92F9C23BE00815A49 = {
+						CreatedOnToolsVersion = 26.4;
+					};
 				};
 			};
 			buildConfigurationList = 8B04E9492F89ABE100F42874 /* Build configuration list for PBXProject "FindMyRun" */;
@@ -216,6 +319,7 @@
 				8B04E94D2F89ABE100F42874 /* FindMyRun */,
 				8B04E95C2F89ABE200F42874 /* FindMyRunTests */,
 				8B04E9662F89ABE200F42874 /* FindMyRunUITests */,
+				8B3D1FB92F9C23BE00815A49 /* FindMyRunWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -236,6 +340,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8B04E9652F89ABE200F42874 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8B3D1FB82F9C23BE00815A49 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -266,6 +377,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8B3D1FB62F9C23BE00815A49 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -278,6 +396,11 @@
 			isa = PBXTargetDependency;
 			target = 8B04E94D2F89ABE100F42874 /* FindMyRun */;
 			targetProxy = 8B04E9682F89ABE200F42874 /* PBXContainerItemProxy */;
+		};
+		8B3D1FCD2F9C23BF00815A49 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8B3D1FB92F9C23BE00815A49 /* FindMyRunWidgetExtension */;
+			targetProxy = 8B3D1FCC2F9C23BF00815A49 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -408,6 +531,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = FindMyRun/FindMyRun.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VQNUKZ7KS3;
@@ -426,9 +551,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = migstt.FindMyRun;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -448,8 +574,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = FindMyRun/FindMyRun.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VQNUKZ7KS3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -466,9 +594,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = migstt.FindMyRun;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -585,6 +714,70 @@
 			};
 			name = Release;
 		};
+		8B3D1FD02F9C23BF00815A49 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = FindMyRunWidgetExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VQNUKZ7KS3;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FindMyRunWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FindMyRunWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = migstt.FindMyRun.FindMyRunWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8B3D1FD12F9C23BF00815A49 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = FindMyRunWidgetExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VQNUKZ7KS3;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FindMyRunWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FindMyRunWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = migstt.FindMyRun.FindMyRunWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -620,6 +813,15 @@
 			buildConfigurations = (
 				8B04E9782F89ABE200F42874 /* Debug */,
 				8B04E9792F89ABE200F42874 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8B3D1FCF2F9C23BF00815A49 /* Build configuration list for PBXNativeTarget "FindMyRunWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8B3D1FD02F9C23BF00815A49 /* Debug */,
+				8B3D1FD12F9C23BF00815A49 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

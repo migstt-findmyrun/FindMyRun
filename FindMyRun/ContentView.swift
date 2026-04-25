@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import MapKit
 
 struct ContentView: View {
     @State private var runService = RunService()
@@ -14,118 +15,189 @@ struct ContentView: View {
     @State private var myRuns = MyRunsManager()
     @State private var appSettings = AppSettings()
     @State private var selectedTab: AppTab = .maps
+    @State private var mapService = RunService()
+    @State private var mapOnlyToday = false
+    @State private var mapOnlyTomorrow = false
+    @State private var mapVisibleRegion: MKCoordinateRegion?
+    @State private var deepLinkedRun: Run?
+    @State private var deepLinkedClub: Club?
+    @State private var deepLinkService = RunService()
+    @State private var showSettings = false
+    @State private var mapSearchOverride: [Run]? = nil
+    @State private var mapSearchCenter: CLLocationCoordinate2D? = nil
+    @State private var siriSearchRequest: SiriSearchRequest? = nil
 
-    // Search filters
-    @State private var selectedDate: Date?
-    @State private var selectedEndDate: Date?
-    @State private var selectedFlexibility: DateFlexibility = .exact
-    @State private var selectedClubIds: Set<String> = []
-    @State private var minDistanceKm: Double = 0
-    @State private var maxDistanceKm: Double = 50
-    @State private var requiresRoute = false
-    @State private var showResults = false
+    private var mapDisplayedRuns: [Run] {
+        let cal = Calendar.current
+        let nextWeek = cal.date(byAdding: .day, value: 7, to: Date()) ?? Date()
+        let withinWeek = mapService.runs.filter { $0.occursAt <= nextWeek }
+        if mapOnlyToday { return withinWeek.filter { cal.isDateInToday($0.occursAt) } }
+        if mapOnlyTomorrow { return withinWeek.filter { cal.isDateInTomorrow($0.occursAt) } }
+        return withinWeek
+    }
 
-    var body: some View {
-        TabView(selection: $selectedTab) {
-            Tab("Map List", systemImage: "map.fill", value: .maps) {
-                mapsPage
-            }
-
-            Tab("List", systemImage: "list.bullet", value: .list) {
-                listPage
-            }
-
-            Tab("Fav Clubs", systemImage: "star.fill", value: .favorites) {
-                favoritesPage
-            }
-
-            Tab("My Runs", systemImage: "figure.run", value: .myRuns) {
-                myRunsPage
-            }
-
-            Tab("Search", systemImage: "magnifyingglass", value: .search) {
-                searchPage
-            }
-
-        }
-        .tint(appSettings.themeColor)
-        .toolbarBackground(Color.white, for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
-        .environment(locationService)
-        .environment(favorites)
-        .environment(myRuns)
-        .environment(notifications)
-        .environment(appSettings)
-        .onAppear {
-            locationService.requestPermission()
-        }
-        .task {
-            await runService.fetchClubs()
-            myRuns.notifications = notifications
-            await notifications.refreshStatus()
+    /// Runs whose coordinates fall within the map's current visible region.
+    private var visibleRuns: [Run] {
+        guard let region = mapVisibleRegion else { return mapDisplayedRuns }
+        return mapDisplayedRuns.filter { run in
+            let lat = run.startLat ?? run.clubs.latitude
+            let lng = run.startLng ?? run.clubs.longitude
+            guard let lat, let lng else { return false }
+            let latOK = abs(lat - region.center.latitude) <= region.span.latitudeDelta / 2
+            let lngOK = abs(lng - region.center.longitude) <= region.span.longitudeDelta / 2
+            return latOK && lngOK
         }
     }
 
-    // MARK: - Search Page
+    static let shareDomain = "findmyrun.app"
 
-    private var searchPage: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                ScrollView {
-                    VStack(spacing: 16) {
-                        // Search card — always visible
-                        SearchCardView(
-                            selectedDate: $selectedDate,
-                            selectedClubIds: $selectedClubIds,
-                            minDistanceKm: $minDistanceKm,
-                            maxDistanceKm: $maxDistanceKm,
-                            requiresRoute: $requiresRoute,
-                            endDate: $selectedEndDate,
-                            flexibility: $selectedFlexibility,
-                            clubs: runService.clubs,
-                            favorites: favorites,
-                            onSearch: {
-                                showResults = true
-                                Task {
-                                    // Compute effective date range from flexibility
-                                    let effectiveEnd: Date?
-                                    if let start = selectedDate, selectedFlexibility != .exact {
-                                        let days = selectedFlexibility.days
-                                        effectiveEnd = Calendar.current.date(byAdding: .day, value: days, to: start)
-                                    } else {
-                                        effectiveEnd = selectedEndDate
-                                    }
-
-                                    let effectiveStart: Date?
-                                    if let start = selectedDate, selectedFlexibility != .exact {
-                                        let days = selectedFlexibility.days
-                                        effectiveStart = Calendar.current.date(byAdding: .day, value: -days, to: start)
-                                    } else {
-                                        effectiveStart = selectedDate
-                                    }
-
-                                    await runService.searchRuns(
-                                        date: effectiveStart,
-                                        endDate: effectiveEnd,
-                                        clubIds: selectedClubIds,
-                                        minKm: minDistanceKm,
-                                        maxKm: maxDistanceKm,
-                                        requiresRoute: requiresRoute
-                                    )
-                                }
-                            }
-                        )
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                    .padding(.bottom, 16)
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            // Active page
+            Group {
+                switch selectedTab {
+                case .maps:      mapsPage
+                case .list:      listPage
+                case .search:    searchPage
+                case .favorites: favoritesPage
+                case .myRuns:    myRunsPage
                 }
             }
-            .background(Color(.systemGroupedBackground))
-            .sheet(isPresented: $showResults) {
-                SearchResultsView(runService: runService)
+            .tint(appSettings.themeColor)
+            .environment(locationService)
+            .environment(favorites)
+            .environment(myRuns)
+            .environment(notifications)
+            .environment(appSettings)
+
+            // Floating tab bar — card width, slightly into safe area
+            floatingTabBar
+                .padding(.horizontal, 12)
+                .padding(.bottom, -10)
+                .frame(maxWidth: .infinity)
+        }
+        .task {
+            await runService.fetchClubs()
+            await mapService.fetchAllUpcoming()
+            myRuns.notifications = notifications
+            await notifications.refreshStatus()
+        }
+        .onOpenURL { url in
+            guard url.host == Self.shareDomain,
+                  url.pathComponents.count == 3 else { return }
+            let type = url.pathComponents[1]
+            let id   = url.pathComponents[2]
+            Task { @MainActor in
+                switch type {
+                case "run":
+                    if let run = await deepLinkService.fetchRun(id: id) {
+                        deepLinkedRun = run
+                    }
+                case "club":
+                    if let club = await deepLinkService.fetchClub(id: id) {
+                        deepLinkedClub = club
+                    }
+                default:
+                    break
+                }
             }
         }
+        .sheet(item: $deepLinkedRun) { run in
+            RunDetailSheet(run: run)
+                .environment(locationService)
+                .environment(favorites)
+                .environment(myRuns)
+                .environment(appSettings)
+        }
+        .sheet(item: $deepLinkedClub) { club in
+            ClubDetailCard(club: club, favorites: favorites)
+                .environment(appSettings)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+                .environment(appSettings)
+                .environment(notifications)
+        }
+        .onAppear {
+            guard let tab = UserDefaults(suiteName: SharedRunStore.appGroupID)?.string(forKey: "siriRequestedTab") else { return }
+            UserDefaults(suiteName: SharedRunStore.appGroupID)?.removeObject(forKey: "siriRequestedTab")
+            switch tab {
+            case "myRuns":
+                selectedTab = .myRuns
+            case "search":
+                siriSearchRequest = SharedRunStore.loadSiriRequest()
+                selectedTab = .search
+            default:
+                break
+            }
+        }
+    }
+
+    // MARK: - Floating Pill Tab Bar
+
+    private var floatingTabBar: some View {
+        HStack(spacing: 0) {
+            tabBarButton(tab: .maps,      icon: "house",            activeIcon: "house.fill")
+            tabBarButton(tab: .list,      icon: "square.grid.2x2",  activeIcon: "square.grid.2x2.fill")
+
+            tabBarButton(tab: .search, icon: "magnifyingglass", activeIcon: "magnifyingglass")
+
+            tabBarButton(tab: .favorites, icon: "star",              activeIcon: "star.fill")
+            tabBarButton(tab: .myRuns,    icon: "figure.run",        activeIcon: "figure.run")
+
+            // Separator + Settings
+            Rectangle()
+                .fill(.white.opacity(0.2))
+                .frame(width: 1, height: 28)
+                .padding(.horizontal, 4)
+
+            Button {
+                showSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 24, weight: .light))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 2)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(.black)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(.white.opacity(0.18), lineWidth: 1)
+                )
+        )
+        .shadow(color: .black.opacity(0.5), radius: 20, y: -6)
+    }
+
+    @ViewBuilder
+    private func tabBarButton(tab: AppTab, icon: String, activeIcon: String) -> some View {
+        let isActive = selectedTab == tab
+        Button {
+            withAnimation(.spring(duration: 0.3, bounce: 0.2)) {
+                selectedTab = tab
+            }
+        } label: {
+            ZStack {
+                if isActive {
+                    Circle()
+                        .fill(.white)
+                        .frame(width: 50, height: 50)
+                }
+                Image(systemName: isActive ? activeIcon : icon)
+                    .font(.system(size: 24, weight: .light))
+                    .foregroundStyle(isActive ? .black : .white)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 2)
+        }
+        .buttonStyle(.plain)
+        .animation(.spring(duration: 0.3, bounce: 0.2), value: isActive)
     }
 
     // MARK: - Favorites Page
@@ -137,13 +209,19 @@ struct ContentView: View {
     // MARK: - Maps Page
 
     private var mapsPage: some View {
-        MapPageView()
+        MapPageView(selectedTab: $selectedTab, mapService: mapService, clubs: runService.clubs, onlyToday: $mapOnlyToday, onlyTomorrow: $mapOnlyTomorrow, visibleRegion: $mapVisibleRegion, visibleRunCount: visibleRuns.count, searchOverride: $mapSearchOverride, searchCenter: $mapSearchCenter)
     }
 
     // MARK: - List Page
 
     private var listPage: some View {
-        ListPageView()
+        ListPageView(runs: visibleRuns, isLoading: mapService.isLoading)
+    }
+
+    // MARK: - Search Page
+
+    private var searchPage: some View {
+        SearchPageView(selectedTab: $selectedTab, mapSearchOverride: $mapSearchOverride, mapSearchCenter: $mapSearchCenter, siriRequest: $siriSearchRequest)
     }
 
     // MARK: - My Runs Page
@@ -154,7 +232,7 @@ struct ContentView: View {
 }
 
 enum AppTab {
-    case search, favorites, maps, list, strava, myRuns
+    case maps, list, search, favorites, myRuns
 }
 
 #Preview {

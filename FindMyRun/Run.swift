@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import CoreLocation
 
 struct Run: Identifiable, Codable, Hashable {
     static func == (lhs: Run, rhs: Run) -> Bool { lhs.id == rhs.id }
@@ -89,6 +90,36 @@ struct Club: Identifiable, Codable {
             return URL(string: "https://www.strava.com/clubs/\(slug)")
         }
         return nil
+    }
+}
+
+extension Run {
+    func distanceMeters(from userCoord: CLLocationCoordinate2D) -> Double? {
+        let lat = startLat ?? clubs.latitude
+        let lng = startLng ?? clubs.longitude
+        guard let lat, let lng else { return nil }
+        return CLLocation(latitude: userCoord.latitude, longitude: userCoord.longitude)
+            .distance(from: CLLocation(latitude: lat, longitude: lng))
+    }
+}
+
+extension Array where Element == Run {
+    /// Sort by date (day) first, then by distance from the user's location within the same day.
+    /// Runs with no known coordinates sort to the end of their date group.
+    func sortedByDateThenDistance(from userLocation: CLLocationCoordinate2D?) -> [Run] {
+        let cal = Calendar.current
+        return sorted { a, b in
+            let dayA = cal.startOfDay(for: a.occursAt)
+            let dayB = cal.startOfDay(for: b.occursAt)
+            guard dayA == dayB else { return dayA < dayB }
+            guard let userCoord = userLocation else { return false }
+            switch (a.distanceMeters(from: userCoord), b.distanceMeters(from: userCoord)) {
+            case (nil, nil):        return false
+            case (nil, _):          return false
+            case (_, nil):          return true
+            case let (da?, db?):    return da < db
+            }
+        }
     }
 }
 

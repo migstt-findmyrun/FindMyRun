@@ -47,7 +47,7 @@ final class RunService {
         }
     }
 
-    func searchRuns(date: Date?, endDate: Date? = nil, clubIds: Set<String> = [], minKm: Double = 0, maxKm: Double = 0, requiresRoute: Bool = false) async {
+    func searchRuns(date: Date?, endDate: Date? = nil, clubIds: Set<String> = [], minKm: Double = 0, maxKm: Double = 0, requiresRoute: Bool = false, nearLocation: CLLocationCoordinate2D? = nil) async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
@@ -121,12 +121,24 @@ final class RunService {
             var results = try decoder.decode([Run].self, from: data)
 
             // Client-side distance range filter
-            if minKm > 0 {
+            if minKm > 0 || maxKm < 50 {
                 let minMeters = minKm * 1000
                 let maxMeters = maxKm >= 50 ? Double.infinity : maxKm * 1000
                 results = results.filter {
                     guard let d = $0.routes?.distanceMeters else { return false }
                     return d >= minMeters && d <= maxMeters
+                }
+            }
+
+            // Client-side proximity filter (100 km radius from custom location)
+            if let origin = nearLocation {
+                let originLocation = CLLocation(latitude: origin.latitude, longitude: origin.longitude)
+                results = results.filter { run in
+                    let lat = run.startLat ?? run.clubs.latitude
+                    let lng = run.startLng ?? run.clubs.longitude
+                    guard let lat, let lng else { return false }
+                    let runLocation = CLLocation(latitude: lat, longitude: lng)
+                    return originLocation.distance(from: runLocation) <= 25_000
                 }
             }
 
@@ -190,6 +202,52 @@ final class RunService {
             }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Fetch a single club by its UUID
+    func fetchClub(id: String) async -> Club? {
+        let urlString = "\(supabaseURL)/rest/v1/clubs?id=eq.\(id)&select=*&limit=1"
+        guard let url = URL(string: urlString) else { return nil }
+        var request = URLRequest(url: url)
+        request.setValue(supabaseAnonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(supabaseAnonKey)", forHTTPHeaderField: "Authorization")
+        do {
+            let (data, _) = try await URLSession.shared.data(for: request)
+            return try JSONDecoder().decode([Club].self, from: data).first
+        } catch {
+            return nil
+        }
+    }
+
+    /// Fetch a single run by its UUID
+    func fetchRun(id: String) async -> Run? {
+        let urlString = "\(supabaseURL)/rest/v1/events?id=eq.\(id)&select=*,clubs(*),routes(*)&limit=1"
+        guard let url = URL(string: urlString) else { return nil }
+
+        var request = URLRequest(url: url)
+        request.setValue(supabaseAnonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(supabaseAnonKey)", forHTTPHeaderField: "Authorization")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+
+            let decoder = JSONDecoder()
+            let isoFormatter = ISO8601DateFormatter()
+            isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            decoder.dateDecodingStrategy = .custom { decoder in
+                let container = try decoder.singleValueContainer()
+                let dateString = try container.decode(String.self)
+                if let d = isoFormatter.date(from: dateString) { return d }
+                isoFormatter.formatOptions = [.withInternetDateTime]
+                if let d = isoFormatter.date(from: dateString) { return d }
+                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date: \(dateString)")
+            }
+
+            return try decoder.decode([Run].self, from: data).first
+        } catch {
+            return nil
         }
     }
 

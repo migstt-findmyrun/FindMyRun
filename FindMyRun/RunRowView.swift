@@ -16,9 +16,10 @@ struct RunRowView: View {
     @State private var showingClubDetail = false
 
     private var distanceToStart: String? {
-        guard let userCoord = locationService.location,
-              let lat = run.startLat,
-              let lng = run.startLng else { return nil }
+        guard let userCoord = locationService.location else { return nil }
+        let lat = run.startLat ?? run.clubs.latitude
+        let lng = run.startLng ?? run.clubs.longitude
+        guard let lat, let lng else { return nil }
         let userLoc = CLLocation(latitude: userCoord.latitude, longitude: userCoord.longitude)
         let runLoc = CLLocation(latitude: lat, longitude: lng)
         let metres = userLoc.distance(from: runLoc)
@@ -42,9 +43,9 @@ struct RunRowView: View {
                         Button {
                             showingClubDetail = true
                         } label: {
-                            Image(systemName: "info.circle")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
+                            Image(systemName: "info.circle.fill")
+                                .font(.footnote)
+                                .foregroundStyle(appSettings.themeColor.opacity(0.7))
                         }
                         .buttonStyle(.plain)
                     }
@@ -111,6 +112,13 @@ struct RunRowView: View {
                     }
                 }
                 .font(.caption)
+                // Apple Weather attribution — re-enable when switching back to WeatherKit
+                // HStack(spacing: 3) {
+                //     Image(systemName: "apple.logo")
+                //     Text("Weather")
+                // }
+                // .font(.caption2)
+                // .foregroundStyle(.tertiary)
             } else if isFetchingForecast {
                 Divider()
                 HStack(spacing: 6) {
@@ -125,14 +133,8 @@ struct RunRowView: View {
         .background(.background, in: RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
         .sheet(isPresented: $showingClubDetail) {
-            NavigationStack {
-                ClubDetailView(club: run.clubs, favorites: favorites)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { showingClubDetail = false }
-                        }
-                    }
-            }
+            ClubDetailCard(club: run.clubs, favorites: favorites)
+                .environment(appSettings)
         }
     }
 }

@@ -245,6 +245,8 @@ private struct DayCell: View {
         Calendar.current.component(.day, from: date)
     }
 
+    @Environment(AppSettings.self) private var appSettings
+
     var body: some View {
         Button(action: onTap) {
             ZStack {
@@ -258,16 +260,24 @@ private struct DayCell: View {
                 // Start/end caps
                 if isStart || isEnd {
                     Circle()
-                        .fill(.gray)
+                        .fill(appSettings.themeColor)
+                        .frame(width: 34, height: 34)
+                }
+
+                // Today ring
+                if today && !isStart && !isEnd {
+                    Circle()
+                        .stroke(appSettings.themeColor, lineWidth: 2)
                         .frame(width: 34, height: 34)
                 }
 
                 Text("\(day)")
                     .font(.subheadline)
-                    .fontWeight(isPast ? .regular : .bold)
+                    .fontWeight(today || isStart || isEnd ? .bold : isPast ? .regular : .medium)
                     .fontDesign(.rounded)
                     .foregroundStyle(
                         isStart || isEnd ? Color.white :
+                        today ? appSettings.themeColor :
                         isPast ? Color(.tertiaryLabel) : Color.primary
                     )
             }

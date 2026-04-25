@@ -8,66 +8,35 @@ import MapKit
 
 struct SearchResultsView: View {
     let runService: RunService
+    var searchLocation: CLLocationCoordinate2D? = nil
     @Environment(\.dismiss) private var dismiss
     @Environment(MyRunsManager.self) private var myRuns
     @Environment(AppSettings.self) private var appSettings
+    @Environment(LocationService.self) private var locationService
     @State private var selectedRun: Run?
     @State private var forecast: DayForecast?
     @State private var isFetchingForecast = false
+    @State private var showingMap = false
+    @State private var mapCameraPosition: MapCameraPosition = .automatic
     @Namespace private var animation
 
     private var isDetailShowing: Bool { selectedRun != nil }
 
+    private var sortedRuns: [Run] {
+        runService.runs.sortedByDateThenDistance(from: locationService.location)
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
-                // Results list
-                ScrollView {
-                    LazyVStack(spacing: 10) {
-                        if runService.isLoading {
-                            ProgressView("Searching…")
-                                .frame(maxWidth: .infinity, minHeight: 200)
-                        } else if let error = runService.errorMessage {
-                            ContentUnavailableView {
-                                Label("Something Went Wrong", systemImage: "exclamationmark.triangle")
-                            } description: {
-                                Text(error)
-                            }
-                        } else if runService.runs.isEmpty {
-                            ContentUnavailableView(
-                                "No Runs Found",
-                                systemImage: "figure.run.circle",
-                                description: Text("Try adjusting your filters.")
-                            )
-                        } else {
-                            ForEach(runService.runs) { run in
-                                if selectedRun?.id != run.id {
-                                    RunRowView(run: run)
-                                        .matchedGeometryEffect(id: run.id, in: animation)
-                                        .onTapGesture {
-                                            selectRun(run)
-                                        }
-                                } else {
-                                    Color.clear
-                                        .frame(height: 100)
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                }
-                .opacity(isDetailShowing ? 0.3 : 1)
-                .allowsHitTesting(!isDetailShowing)
-
-                // Detail overlay
-                if let run = selectedRun {
-                    detailOverlay(run: run)
-                        .transition(.identity)
+                if showingMap {
+                    resultsMapView
+                } else {
+                    resultsListView
                 }
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle(isDetailShowing ? "" : "\(runService.runs.count) Run\(runService.runs.count == 1 ? "" : "s") Found")
+            .navigationTitle(isDetailShowing ? "" : "\(sortedRuns.count) Run\(sortedRuns.count == 1 ? "" : "s") Found")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if isDetailShowing, let run = selectedRun {
@@ -79,23 +48,192 @@ struct SearchResultsView: View {
                                 .foregroundStyle(myRuns.isSaved(run.id) ? appSettings.themeColor : .secondary)
                         }
                     }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(isDetailShowing ? "Back" : "Done") {
-                        if isDetailShowing {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        ShareLink(item: URL(string: "https://\(ContentView.shareDomain)/run/\(run.id)")!) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Back") {
                             withAnimation(.spring(duration: 0.35, bounce: 0.15)) {
                                 selectedRun = nil
                                 forecast = nil
                             }
-                        } else {
-                            dismiss()
                         }
+                        .fontWeight(.semibold)
                     }
-                    .fontWeight(.semibold)
-                    
+                }
+                if !isDetailShowing {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Picker("View", selection: $showingMap) {
+                            Image(systemName: "list.bullet").tag(false)
+                            Image(systemName: "map").tag(true)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 80)
+                        .disabled(runService.isLoading || runService.runs.isEmpty)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { dismiss() }
+                            .fontWeight(.semibold)
+                    }
                 }
             }
+            .onChange(of: showingMap) { _, isMap in
+                if isMap { fitMapToResults() }
+            }
         }
+    }
+
+    // MARK: - List View
+
+    private var resultsListView: some View {
+        ZStack {
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    if runService.isLoading {
+                        ProgressView("Searching…")
+                            .frame(maxWidth: .infinity, minHeight: 200)
+                    } else if let error = runService.errorMessage {
+                        ContentUnavailableView {
+                            Label("Something Went Wrong", systemImage: "exclamationmark.triangle")
+                        } description: {
+                            Text(error)
+                        }
+                    } else if runService.runs.isEmpty {
+                        ContentUnavailableView(
+                            "No Runs Found",
+                            systemImage: "figure.run.circle",
+                            description: Text("Try adjusting your filters.")
+                        )
+                    } else {
+                        ForEach(sortedRuns) { run in
+                            if selectedRun?.id != run.id {
+                                RunRowView(run: run)
+                                    .matchedGeometryEffect(id: run.id, in: animation)
+                                    .onTapGesture { selectRun(run) }
+                            } else {
+                                Color.clear.frame(height: 100)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
+            }
+            .opacity(isDetailShowing ? 0.3 : 1)
+            .allowsHitTesting(!isDetailShowing)
+
+            if let run = selectedRun {
+                detailOverlay(run: run)
+                    .transition(.identity)
+            }
+        }
+    }
+
+    // MARK: - Map View
+
+    private var resultsMapView: some View {
+        ZStack(alignment: .top) {
+            Map(position: $mapCameraPosition) {
+                // User location dot
+                if let loc = locationService.location {
+                    Annotation("You", coordinate: loc) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.blue.opacity(0.2))
+                                .frame(width: 28, height: 28)
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 12, height: 12)
+                                .overlay(Circle().stroke(.white, lineWidth: 2))
+                        }
+                    }
+                }
+
+                // Search location pin (if different from user location)
+                if let loc = searchLocation {
+                    Annotation("Search Area", coordinate: loc) {
+                        ZStack {
+                            Circle()
+                                .fill(appSettings.themeColor.opacity(0.2))
+                                .frame(width: 28, height: 28)
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(.white, appSettings.themeColor)
+                        }
+                    }
+                }
+
+                // Run pins
+                ForEach(sortedRuns) { run in
+                    if let coord = coordinate(for: run) {
+                        let hasRoute = run.routes?.polyline != nil || run.routes?.summaryPolyline != nil
+                        Annotation(run.title, coordinate: coord) {
+                            Button {
+                                selectRun(run)
+                            } label: {
+                                Image(systemName: "figure.run.circle.fill")
+                                    .font(.title)
+                                    .foregroundStyle(.white, hasRoute ? .red : appSettings.themeColor)
+                                    .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
+                            }
+                        }
+                    }
+                }
+            }
+            .mapStyle(.standard(elevation: .flat))
+            .mapControlVisibility(.hidden)
+            .ignoresSafeArea(edges: .bottom)
+
+            if let run = selectedRun {
+                detailOverlay(run: run)
+                    .transition(.identity)
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func coordinate(for run: Run) -> CLLocationCoordinate2D? {
+        if let lat = run.startLat, let lng = run.startLng {
+            return CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        } else if let lat = run.clubs.latitude, let lng = run.clubs.longitude {
+            return CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        }
+        return nil
+    }
+
+    private func fitMapToResults() {
+        // Prefer the search location, then fall back to device location
+        let anchor = searchLocation ?? locationService.location
+        if let loc = anchor {
+            // 25 km radius → 50 km diameter; 1° lat ≈ 111 km
+            let span = (50.0 / 111.0)
+            let region = MKCoordinateRegion(
+                center: loc,
+                span: MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span)
+            )
+            withAnimation { mapCameraPosition = .region(region) }
+            return
+        }
+
+        // Fallback: fit all result pins into view
+        let coords = runService.runs.compactMap { coordinate(for: $0) }
+        guard !coords.isEmpty else { return }
+
+        var minLat = coords[0].latitude, maxLat = coords[0].latitude
+        var minLng = coords[0].longitude, maxLng = coords[0].longitude
+        for c in coords {
+            minLat = min(minLat, c.latitude); maxLat = max(maxLat, c.latitude)
+            minLng = min(minLng, c.longitude); maxLng = max(maxLng, c.longitude)
+        }
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLng + maxLng) / 2),
+            span: MKCoordinateSpan(latitudeDelta: max((maxLat - minLat) * 1.5, 0.05),
+                                   longitudeDelta: max((maxLng - minLng) * 1.5, 0.05))
+        )
+        withAnimation { mapCameraPosition = .region(region) }
     }
 
     private func selectRun(_ run: Run) {
@@ -103,12 +241,10 @@ struct SearchResultsView: View {
             selectedRun = run
             forecast = nil
         }
-
-        // Fetch weather forecast for this run's date and location
         Task {
             isFetchingForecast = true
-            let lat = run.startLat ?? 43.6532
-            let lng = run.startLng ?? -79.3832
+            let lat = run.startLat ?? run.clubs.latitude ?? 43.6532
+            let lng = run.startLng ?? run.clubs.longitude ?? -79.3832
             forecast = await WeatherService.fetchForecast(for: run.occursAt, latitude: lat, longitude: lng)
             isFetchingForecast = false
         }
@@ -117,7 +253,6 @@ struct SearchResultsView: View {
     @ViewBuilder
     private func detailOverlay(run: Run) -> some View {
         ZStack(alignment: .top) {
-            // Map fills the entire background
             if let polylineString = run.routes?.polyline ?? run.routes?.summaryPolyline {
                 let coordinates = PolylineDecoder.decode(polylineString)
                 if !coordinates.isEmpty {
@@ -131,7 +266,6 @@ struct SearchResultsView: View {
                 mapFallback(for: run)
             }
 
-            // Card floating on top of map
             RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast)
                 .matchedGeometryEffect(id: run.id, in: animation)
                 .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
@@ -142,13 +276,14 @@ struct SearchResultsView: View {
 
     @ViewBuilder
     private func mapFallback(for run: Run) -> some View {
-        if let lat = run.startLat, let lng = run.startLng {
+        let lat = run.startLat ?? run.clubs.latitude
+        let lng = run.startLng ?? run.clubs.longitude
+        if let lat, let lng {
             Map(initialPosition: .region(MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: lat, longitude: lng),
                 span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
             ))) {
                 Marker(run.address ?? "Start", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng))
-                    
             }
             .mapStyle(.standard(elevation: .realistic))
             .ignoresSafeArea(edges: .bottom)

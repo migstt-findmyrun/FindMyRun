@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import WidgetKit
 
 @Observable
 final class MyRunsManager {
@@ -22,6 +23,8 @@ final class MyRunsManager {
         } else {
             savedRuns = []
         }
+        // Sync any pre-existing saved runs into the App Group so the widget sees them.
+        syncToWidget()
     }
 
     func isSaved(_ runId: String) -> Bool {
@@ -47,5 +50,22 @@ final class MyRunsManager {
         if let data = try? JSONEncoder().encode(savedRuns) {
             UserDefaults.standard.set(data, forKey: Self.key)
         }
+        syncToWidget()
+    }
+
+    private func syncToWidget() {
+        SharedRunStore.save(savedRuns.map {
+            WidgetRun(
+                id: $0.id,
+                title: $0.title,
+                clubName: $0.clubs.name,
+                clubCity: $0.clubs.city,
+                occursAt: $0.occursAt,
+                address: $0.address,
+                distanceKm: $0.routes?.distanceKm,
+                polyline: $0.routes?.summaryPolyline ?? $0.routes?.polyline
+            )
+        })
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }

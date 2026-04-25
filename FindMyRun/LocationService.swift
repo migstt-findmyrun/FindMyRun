@@ -18,10 +18,21 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         manager.desiredAccuracy = kCLLocationAccuracyKilometer
     }
 
+    /// Starts location updates if permission is already granted. Never shows a prompt.
+    /// Call this on app launch / view appear to silently resume location if the user
+    /// already gave permission in a previous session.
+    func startIfAuthorized() {
+        let status = manager.authorizationStatus
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            manager.startUpdatingLocation()
+        }
+    }
+
+    /// Starts location updates if authorized, or shows the system permission prompt
+    /// if status is undetermined. Call this only from an explicit user action.
     func requestPermission() {
         let status = manager.authorizationStatus
         if status == .authorizedWhenInUse || status == .authorizedAlways {
-            // Already authorized — start immediately
             manager.startUpdatingLocation()
         } else if status == .notDetermined {
             manager.requestWhenInUseAuthorization()

@@ -137,7 +137,7 @@ struct SearchCardView: View {
 
 // MARK: - Distance Range Slider
 
-private struct DistanceRangeFilter: View {
+struct DistanceRangeFilter: View {
     @Binding var minKm: Double
     @Binding var maxKm: Double
     @Environment(AppSettings.self) private var appSettings

@@ -7,88 +7,126 @@ import SwiftUI
 import MapKit
 
 struct ListPageView: View {
+    let runs: [Run]
+    var isLoading: Bool = false
     @Environment(AppSettings.self) private var appSettings
-    @State private var listService = RunService()
+    @Environment(LocationService.self) private var locationService
     @State private var selectedRun: Run?
     @Namespace private var animation
     @Environment(MyRunsManager.self) private var myRuns
-
+    @State private var showAll = false
+    @State private var allRunsService = RunService()
     private var isDetailShowing: Bool { selectedRun != nil }
 
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                ScrollView {
-                    LazyVStack(spacing: 10) {
-                        if listService.isLoading {
-                            ProgressView("Loading runs…")
-                                .frame(maxWidth: .infinity, minHeight: 200)
-                        } else if let error = listService.errorMessage {
-                            ContentUnavailableView {
-                                Label("Something Went Wrong", systemImage: "exclamationmark.triangle")
-                            } description: {
-                                Text(error)
-                            }
-                        } else if listService.runs.isEmpty {
-                            ContentUnavailableView(
-                                "No Upcoming Runs",
-                                systemImage: "figure.run.circle",
-                                description: Text("Check back later for new runs.")
-                            )
-                        } else {
-                            ForEach(listService.runs) { run in
-                                if selectedRun?.id != run.id {
-                                    RunRowView(run: run)
-                                        .matchedGeometryEffect(id: run.id, in: animation)
-                                        .onTapGesture {
-                                            selectRun(run)
-                                        }
-                                } else {
-                                    Color.clear
-                                        .frame(height: 100)
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                }
-                .opacity(isDetailShowing ? 0.3 : 1)
-                .allowsHitTesting(!isDetailShowing)
+    private var activeRuns: [Run] {
+        showAll ? allRunsService.runs : runs
+    }
 
-                if let run = selectedRun {
-                    detailOverlay(run: run)
-                        .transition(.identity)
-                }
-            }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle(isDetailShowing ? "" : "All Runs")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                if isDetailShowing, let run = selectedRun {
-                    ToolbarItem(placement: .topBarLeading) {
+    private var sortedRuns: [Run] {
+        activeRuns.sortedByDateThenDistance(from: locationService.location)
+    }
+
+    private var isActivelyLoading: Bool {
+        showAll ? allRunsService.isLoading : isLoading
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color(.systemGroupedBackground).ignoresSafeArea()
+
+            // Main list card
+            VStack(spacing: 0) {
+                // Custom header — always above the detail overlay
+                HStack {
+                    if isDetailShowing, let run = selectedRun {
                         Button {
                             myRuns.toggle(run)
                         } label: {
                             Image(systemName: myRuns.isSaved(run.id) ? "bookmark.fill" : "bookmark")
                                 .foregroundStyle(myRuns.isSaved(run.id) ? appSettings.themeColor : .secondary)
                         }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
+                        Spacer()
+                        ShareLink(item: URL(string: "https://\(ContentView.shareDomain)/run/\(run.id)")!) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
                         Button("Back") {
-                            withAnimation(.spring(duration: 0.35, bounce: 0.15)) {
-                                selectedRun = nil
-                            }
+                            withAnimation(.spring(duration: 0.35, bounce: 0.15)) { selectedRun = nil }
                         }
                         .fontWeight(.semibold)
-                        
+                        .padding(.leading, 8)
+                    } else {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Runs").font(.headline)
+                            HStack(spacing: 4) {
+                                Image(systemName: showAll ? "globe" : "map").font(.caption2)
+                                Text(showAll ? "All upcoming runs" : "Runs from map view").font(.caption2)
+                            }.foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button {
+                            withAnimation(.spring(duration: 0.3)) { showAll.toggle() }
+                        } label: {
+                            Text(showAll ? "Map View" : "Show All")
+                                .font(.subheadline).fontWeight(.medium)
+                        }
                     }
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 12)
+
+                Divider()
+
+                // Content area — detail overlay only covers this zone
+                ZStack {
+                    ScrollView {
+                        LazyVStack(spacing: 10) {
+                            if isActivelyLoading {
+                                ProgressView("Loading runs…")
+                                    .frame(maxWidth: .infinity, minHeight: 200)
+                            } else if sortedRuns.isEmpty {
+                                ContentUnavailableView(
+                                    "No Upcoming Runs",
+                                    systemImage: "figure.run.circle",
+                                    description: Text(showAll ? "Check back later for new runs." : "Try adjusting the map view or tap \"Show All\".")
+                                )
+                            } else {
+                                ForEach(sortedRuns) { run in
+                                    if selectedRun?.id != run.id {
+                                        RunRowView(run: run)
+                                            .matchedGeometryEffect(id: run.id, in: animation)
+                                            .onTapGesture { selectRun(run) }
+                                    } else {
+                                        Color.clear.frame(height: 100)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                    }
+                    .opacity(isDetailShowing ? 0.3 : 1)
+                    .allowsHitTesting(!isDetailShowing)
+
+                    if let run = selectedRun {
+                        detailOverlay(run: run).transition(.identity)
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 20))
             }
-            .task {
-                await listService.fetchAllUpcoming()
+            .clipShape(RoundedRectangle(cornerRadius: 28))
+            .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 72)
+
+        }
+        .task(id: showAll) {
+            if showAll && allRunsService.runs.isEmpty {
+                await allRunsService.fetchAllUpcoming()
             }
         }
+        .onDisappear { showAll = false }
     }
 
     private func selectRun(_ run: Run) {
@@ -126,8 +164,8 @@ struct ListPageView: View {
         }
         .task {
             isFetchingForecast = true
-            let lat = run.startLat ?? 43.6532
-            let lng = run.startLng ?? -79.3832
+            let lat = run.startLat ?? run.clubs.latitude ?? 43.6532
+            let lng = run.startLng ?? run.clubs.longitude ?? -79.3832
             forecast = await WeatherService.fetchForecast(for: run.occursAt, latitude: lat, longitude: lng)
             isFetchingForecast = false
         }
@@ -135,13 +173,14 @@ struct ListPageView: View {
 
     @ViewBuilder
     private func mapFallback(for run: Run) -> some View {
-        if let lat = run.startLat, let lng = run.startLng {
+        let lat = run.startLat ?? run.clubs.latitude
+        let lng = run.startLng ?? run.clubs.longitude
+        if let lat, let lng {
             Map(initialPosition: .region(MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: lat, longitude: lng),
                 span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
             ))) {
-                Marker(run.address ?? "Start", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng))
-                    
+                Marker(run.address ?? run.clubs.name, coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng))
             }
             .mapStyle(.standard(elevation: .realistic))
             .ignoresSafeArea(edges: .bottom)
