@@ -11,9 +11,11 @@ struct SearchResultsView: View {
     var searchLocation: CLLocationCoordinate2D? = nil
     @Environment(\.dismiss) private var dismiss
     @Environment(MyRunsManager.self) private var myRuns
+    @Environment(FavoritesManager.self) private var favorites
     @Environment(AppSettings.self) private var appSettings
     @Environment(LocationService.self) private var locationService
     @State private var selectedRun: Run?
+    @State private var selectedClubForDetail: Club?
     @State private var forecast: DayForecast?
     @State private var isFetchingForecast = false
     @State private var showingMap = false
@@ -35,11 +37,36 @@ struct SearchResultsView: View {
                     resultsListView
                 }
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle(isDetailShowing ? "" : "\(sortedRuns.count) Run\(sortedRuns.count == 1 ? "" : "s") Found")
+            .background(Color.appBackground)
+            .navigationTitle(isDetailShowing || selectedClubForDetail != nil ? "" : "\(sortedRuns.count) Run\(sortedRuns.count == 1 ? "" : "s") Found")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if isDetailShowing, let run = selectedRun {
+                if let club = selectedClubForDetail {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            favorites.toggle(club.id)
+                        } label: {
+                            Image(systemName: favorites.isFavorite(club.id) ? "star.fill" : "star")
+                                .foregroundStyle(favorites.isFavorite(club.id) ? .yellow : Color(.tertiaryLabel))
+                                .animation(.spring(duration: 0.2), value: favorites.isFavorite(club.id))
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        ShareLink(
+                            item: URL(string: "https://\(ContentView.shareDomain)/club/\(club.id)")!,
+                            subject: Text(club.name),
+                            message: Text("Check out \(club.name) on FindMyRun")
+                        ) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Back") {
+                            withAnimation(.spring(duration: 0.35, bounce: 0.15)) { selectedClubForDetail = nil }
+                        }
+                        .fontWeight(.semibold)
+                    }
+                } else if isDetailShowing, let run = selectedRun {
                     ToolbarItem(placement: .topBarLeading) {
                         Button {
                             myRuns.toggle(run)
@@ -62,8 +89,7 @@ struct SearchResultsView: View {
                         }
                         .fontWeight(.semibold)
                     }
-                }
-                if !isDetailShowing {
+                } else {
                     ToolbarItem(placement: .topBarLeading) {
                         Picker("View", selection: $showingMap) {
                             Image(systemName: "list.bullet").tag(false)
@@ -128,6 +154,10 @@ struct SearchResultsView: View {
                 detailOverlay(run: run)
                     .transition(.identity)
             }
+            if let club = selectedClubForDetail {
+                ClubDetailScreen(club: club)
+                    .transition(.identity)
+            }
         }
     }
 
@@ -188,6 +218,10 @@ struct SearchResultsView: View {
 
             if let run = selectedRun {
                 detailOverlay(run: run)
+                    .transition(.identity)
+            }
+            if let club = selectedClubForDetail {
+                ClubDetailScreen(club: club)
                     .transition(.identity)
             }
         }
@@ -266,7 +300,8 @@ struct SearchResultsView: View {
                 mapFallback(for: run)
             }
 
-            RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast)
+            RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast,
+                       onClubInfoTapped: { selectedClubForDetail = $0 })
                 .matchedGeometryEffect(id: run.id, in: animation)
                 .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
                 .padding(.horizontal)
@@ -289,7 +324,7 @@ struct SearchResultsView: View {
             .ignoresSafeArea(edges: .bottom)
             .transition(.move(edge: .bottom).combined(with: .opacity))
         } else {
-            Color(.systemGroupedBackground)
+            Color.appBackground
                 .ignoresSafeArea()
                 .overlay {
                     VStack(spacing: 12) {

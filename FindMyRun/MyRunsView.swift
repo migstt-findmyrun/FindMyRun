@@ -10,7 +10,9 @@ struct MyRunsView: View {
     let myRuns: MyRunsManager
     @Environment(NotificationManager.self) private var notifications
     @Environment(AppSettings.self) private var appSettings
+    @Environment(FavoritesManager.self) private var favorites
     @State private var selectedRun: Run?
+    @State private var selectedClubForDetail: Club?
     @State private var showPermissionAlert = false
     @Namespace private var animation
     @State private var forecast: DayForecast?
@@ -24,12 +26,31 @@ struct MyRunsView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.appBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Header — changes when a run is selected
                 HStack {
-                    if isDetailShowing, let run = selectedRun {
+                    if let club = selectedClubForDetail {
+                        Button { favorites.toggle(club.id) } label: {
+                            Image(systemName: favorites.isFavorite(club.id) ? "star.fill" : "star")
+                                .foregroundStyle(favorites.isFavorite(club.id) ? .yellow : Color(.tertiaryLabel))
+                                .animation(.spring(duration: 0.2), value: favorites.isFavorite(club.id))
+                        }
+                        Spacer()
+                        ShareLink(
+                            item: URL(string: "https://\(ContentView.shareDomain)/club/\(club.id)")!,
+                            subject: Text(club.name),
+                            message: Text("Check out \(club.name) on FindMyRun")
+                        ) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        Button("Back") {
+                            withAnimation(.spring(duration: 0.35, bounce: 0.15)) { selectedClubForDetail = nil }
+                        }
+                        .fontWeight(.semibold)
+                        .padding(.leading, 8)
+                    } else if isDetailShowing, let run = selectedRun {
                         Button { myRuns.toggle(run) } label: {
                             Image(systemName: myRuns.isSaved(run.id) ? "bookmark.fill" : "bookmark")
                                 .foregroundStyle(myRuns.isSaved(run.id) ? appSettings.themeColor : .secondary)
@@ -76,7 +97,7 @@ struct MyRunsView: View {
                                         SwipeToRemoveRow {
                                             myRuns.remove(run.id)
                                         } content: {
-                                            RunRowView(run: run)
+                                            RunRowView(run: run, onClubInfoTapped: { selectedClubForDetail = $0 })
                                                 .matchedGeometryEffect(id: run.id, in: animation)
                                                 .onTapGesture {
                                                     withAnimation(.spring(duration: 0.4, bounce: 0.15)) { selectedRun = run }
@@ -90,12 +111,18 @@ struct MyRunsView: View {
                             .padding(.horizontal)
                             .padding(.top, 8)
                         }
-                        .opacity(isDetailShowing ? 0.3 : 1)
-                        .allowsHitTesting(!isDetailShowing)
+                        .opacity(isDetailShowing || selectedClubForDetail != nil ? 0.3 : 1)
+                        .allowsHitTesting(!isDetailShowing && selectedClubForDetail == nil)
                     }
 
                     if let run = selectedRun {
-                        detailOverlay(run: run).transition(.identity)
+                        detailOverlay(run: run)
+                            .opacity(selectedClubForDetail != nil ? 0.3 : 1)
+                            .allowsHitTesting(selectedClubForDetail == nil)
+                            .transition(.identity)
+                    }
+                    if let club = selectedClubForDetail {
+                        ClubDetailScreen(club: club).transition(.identity)
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 20))
@@ -134,7 +161,8 @@ struct MyRunsView: View {
                 } else { mapFallback(for: run) }
             } else { mapFallback(for: run) }
 
-            RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast)
+            RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast,
+                       onClubInfoTapped: { selectedClubForDetail = $0 })
                 .matchedGeometryEffect(id: run.id, in: animation)
                 .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
                 .padding(.horizontal)
@@ -163,7 +191,7 @@ struct MyRunsView: View {
             .mapStyle(.standard(elevation: .realistic))
             .ignoresSafeArea(edges: .bottom)
         } else {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.appBackground.ignoresSafeArea()
                 .overlay {
                     VStack(spacing: 12) {
                         Image(systemName: "map").font(.system(size: 48)).foregroundStyle(.tertiary)
@@ -204,8 +232,9 @@ struct MyRunsView: View {
 
 // MARK: - Swipe to Remove
 
-private struct SwipeToRemoveRow<Content: View>: View {
+struct SwipeToRemoveRow<Content: View>: View {
     let onRemove: () -> Void
+    var icon: String = "bookmark.slash.fill"
     @ViewBuilder let content: () -> Content
 
     @State private var offset: CGFloat = 0
@@ -217,7 +246,7 @@ private struct SwipeToRemoveRow<Content: View>: View {
             // Red button revealed on swipe
             Button(action: triggerRemove) {
                 VStack(spacing: 4) {
-                    Image(systemName: "bookmark.slash.fill")
+                    Image(systemName: icon)
                         .font(.title3)
                     Text("Remove")
                         .font(.caption2)

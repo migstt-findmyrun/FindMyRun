@@ -11,6 +11,7 @@ import SwiftUI
 struct NextRunEntry: TimelineEntry {
     let date: Date
     let nextRun: WidgetRun?
+    var widgetEnabled: Bool = true
 }
 
 // MARK: - Provider
@@ -33,11 +34,13 @@ struct NextRunProvider: TimelineProvider {
     }
 
     private func loadEntry() -> NextRunEntry {
+        let enabled = UserDefaults(suiteName: SharedRunStore.appGroupID)?.object(forKey: "widgetEnabled") as? Bool ?? true
+        guard enabled else { return NextRunEntry(date: .now, nextRun: nil, widgetEnabled: false) }
         let next = SharedRunStore.load()
             .filter { $0.occursAt > Date() }
             .sorted { $0.occursAt < $1.occursAt }
             .first
-        return NextRunEntry(date: .now, nextRun: next)
+        return NextRunEntry(date: .now, nextRun: next, widgetEnabled: true)
     }
 }
 
@@ -118,12 +121,13 @@ private struct RouteShapeView: View {
 // MARK: - Empty State
 
 private struct EmptyWidgetView: View {
+    var disabled: Bool = false
     var body: some View {
         VStack(spacing: 6) {
-            Image(systemName: "bookmark")
+            Image(systemName: disabled ? "rectangle.slash" : "bookmark")
                 .font(.title2)
                 .foregroundStyle(.tertiary)
-            Text("No saved runs")
+            Text(disabled ? "Widget disabled" : "No saved runs")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -291,7 +295,7 @@ struct FindMyRunWidgetEntryView: View {
                     MediumWidgetView(run: run)
                 }
             } else {
-                EmptyWidgetView()
+                EmptyWidgetView(disabled: !entry.widgetEnabled)
             }
         }
         .widgetURL(entry.nextRun.flatMap { URL(string: "findmyrun://findmyrun.app/run/\($0.id)") })

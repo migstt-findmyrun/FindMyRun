@@ -14,6 +14,8 @@ struct ListPageView: View {
     @State private var selectedRun: Run?
     @Namespace private var animation
     @Environment(MyRunsManager.self) private var myRuns
+    @Environment(FavoritesManager.self) private var favorites
+    @State private var selectedClubForDetail: Club?
     @State private var showAll = false
     @State private var allRunsService = RunService()
     private var isDetailShowing: Bool { selectedRun != nil }
@@ -32,13 +34,32 @@ struct ListPageView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.appBackground.ignoresSafeArea()
 
             // Main list card
             VStack(spacing: 0) {
                 // Custom header — always above the detail overlay
                 HStack {
-                    if isDetailShowing, let run = selectedRun {
+                    if let club = selectedClubForDetail {
+                        Button { favorites.toggle(club.id) } label: {
+                            Image(systemName: favorites.isFavorite(club.id) ? "star.fill" : "star")
+                                .foregroundStyle(favorites.isFavorite(club.id) ? .yellow : Color(.tertiaryLabel))
+                                .animation(.spring(duration: 0.2), value: favorites.isFavorite(club.id))
+                        }
+                        Spacer()
+                        ShareLink(
+                            item: URL(string: "https://\(ContentView.shareDomain)/club/\(club.id)")!,
+                            subject: Text(club.name),
+                            message: Text("Check out \(club.name) on FindMyRun")
+                        ) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        Button("Back") {
+                            withAnimation(.spring(duration: 0.35, bounce: 0.15)) { selectedClubForDetail = nil }
+                        }
+                        .fontWeight(.semibold)
+                        .padding(.leading, 8)
+                    } else if isDetailShowing, let run = selectedRun {
                         Button {
                             myRuns.toggle(run)
                         } label: {
@@ -93,7 +114,7 @@ struct ListPageView: View {
                             } else {
                                 ForEach(sortedRuns) { run in
                                     if selectedRun?.id != run.id {
-                                        RunRowView(run: run)
+                                        RunRowView(run: run, onClubInfoTapped: { selectedClubForDetail = $0 })
                                             .matchedGeometryEffect(id: run.id, in: animation)
                                             .onTapGesture { selectRun(run) }
                                     } else {
@@ -105,15 +126,22 @@ struct ListPageView: View {
                         .padding(.horizontal)
                         .padding(.top, 8)
                     }
-                    .opacity(isDetailShowing ? 0.3 : 1)
-                    .allowsHitTesting(!isDetailShowing)
+                    .opacity(isDetailShowing || selectedClubForDetail != nil ? 0.3 : 1)
+                    .allowsHitTesting(!isDetailShowing && selectedClubForDetail == nil)
 
                     if let run = selectedRun {
-                        detailOverlay(run: run).transition(.identity)
+                        detailOverlay(run: run)
+                            .opacity(selectedClubForDetail != nil ? 0.3 : 1)
+                            .allowsHitTesting(selectedClubForDetail == nil)
+                            .transition(.identity)
+                    }
+                    if let club = selectedClubForDetail {
+                        ClubDetailScreen(club: club).transition(.identity)
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 20))
             }
+            .background(Color(.systemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 28))
             .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
             .padding(.horizontal, 12)
@@ -156,7 +184,8 @@ struct ListPageView: View {
             }
 
             // Card floating on top
-            RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast)
+            RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast,
+                       onClubInfoTapped: { selectedClubForDetail = $0 })
                 .matchedGeometryEffect(id: run.id, in: animation)
                 .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
                 .padding(.horizontal)
@@ -186,7 +215,7 @@ struct ListPageView: View {
             .ignoresSafeArea(edges: .bottom)
             .transition(.move(edge: .bottom).combined(with: .opacity))
         } else {
-            Color(.systemGroupedBackground)
+            Color.appBackground
                 .ignoresSafeArea()
                 .overlay {
                     VStack(spacing: 12) {

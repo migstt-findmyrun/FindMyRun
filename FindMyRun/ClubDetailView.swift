@@ -15,8 +15,6 @@ struct ClubDetailCard: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(.systemGroupedBackground).ignoresSafeArea()
-
             VStack(spacing: 0) {
                 // Header — star (left) + share + Done (right)
                 HStack {
@@ -161,6 +159,7 @@ struct ClubDetailCard: View {
             .padding(.top, 8)
             .padding(.bottom, 32)
         }
+        .presentationBackground(Color.appBackground)
     }
 
     private var locationString: String? {
@@ -199,8 +198,7 @@ struct ClubDetailView: View {
                     }
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.background, in: RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
                 }
 
                 // Links
@@ -210,7 +208,8 @@ struct ClubDetailView: View {
             .padding(.top, 12)
             .padding(.bottom, 24)
         }
-        .background(Color(.systemGroupedBackground))
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 49) }
+        .background(Color.appBackground)
         .navigationTitle(club.name)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -259,8 +258,7 @@ struct ClubDetailView: View {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - Links Card
@@ -329,8 +327,7 @@ struct ClubDetailView: View {
 
                 Spacer(minLength: 0)
             }
-            .background(.background, in: RoundedRectangle(cornerRadius: 16))
-            .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
         }
     }
 

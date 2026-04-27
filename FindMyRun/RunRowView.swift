@@ -10,10 +10,10 @@ struct RunRowView: View {
     let run: Run
     var forecast: DayForecast? = nil
     var isFetchingForecast: Bool = false
+    var onClubInfoTapped: ((Club) -> Void)? = nil
     @Environment(LocationService.self) private var locationService
     @Environment(FavoritesManager.self) private var favorites
     @Environment(AppSettings.self) private var appSettings
-    @State private var showingClubDetail = false
 
     private var distanceToStart: String? {
         guard let userCoord = locationService.location else { return nil }
@@ -41,7 +41,7 @@ struct RunRowView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                         Button {
-                            showingClubDetail = true
+                            onClubInfoTapped?(run.clubs)
                         } label: {
                             Image(systemName: "info.circle.fill")
                                 .font(.footnote)
@@ -112,13 +112,12 @@ struct RunRowView: View {
                     }
                 }
                 .font(.caption)
-                // Apple Weather attribution — re-enable when switching back to WeatherKit
-                // HStack(spacing: 3) {
-                //     Image(systemName: "apple.logo")
-                //     Text("Weather")
-                // }
-                // .font(.caption2)
-                // .foregroundStyle(.tertiary)
+                HStack(spacing: 3) {
+                    Image(systemName: "apple.logo")
+                    Text("Weather")
+                }
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
             } else if isFetchingForecast {
                 Divider()
                 HStack(spacing: 6) {
@@ -132,9 +131,5 @@ struct RunRowView: View {
         .padding(14)
         .background(.background, in: RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
-        .sheet(isPresented: $showingClubDetail) {
-            ClubDetailCard(club: run.clubs, favorites: favorites)
-                .environment(appSettings)
-        }
     }
 }

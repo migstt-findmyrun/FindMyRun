@@ -16,6 +16,7 @@ struct FavoritesPageView: View {
     @State private var selectedRun: Run?
     @State private var selectedClubForDetail: Club?
     @State private var clubSearchQuery = ""
+    @State private var collapsedClubs: Set<String> = []
     @Namespace private var animation
     @State private var forecast: DayForecast?
     @State private var isFetchingForecast = false
@@ -35,6 +36,15 @@ struct FavoritesPageView: View {
         }
     }
 
+    // Favorited clubs that have no upcoming runs
+    private var clubsWithNoRuns: [Club] {
+        let clubsWithRunIds = Set(groupedRuns.map { $0.club.id })
+        let base = localClubs.isEmpty ? allClubs : localClubs
+        return base
+            .filter { favorites.isFavorite($0.id) && !clubsWithRunIds.contains($0.id) }
+            .sorted { $0.name < $1.name }
+    }
+
     // Group runs from embedded club data — no dependency on clubs loading separately
     private var groupedRuns: [(club: Club, runs: [Run])] {
         let favoriteIds = favorites.favoriteClubIds
@@ -50,13 +60,32 @@ struct FavoritesPageView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.appBackground.ignoresSafeArea()
 
             // Main card
             VStack(spacing: 0) {
                 // Custom header — changes when a run is selected
                 HStack {
-                    if isDetailShowing, let run = selectedRun {
+                    if let club = selectedClubForDetail {
+                        Button { favorites.toggle(club.id) } label: {
+                            Image(systemName: favorites.isFavorite(club.id) ? "star.fill" : "star")
+                                .foregroundStyle(favorites.isFavorite(club.id) ? .yellow : Color(.tertiaryLabel))
+                                .animation(.spring(duration: 0.2), value: favorites.isFavorite(club.id))
+                        }
+                        Spacer()
+                        ShareLink(
+                            item: URL(string: "https://\(ContentView.shareDomain)/club/\(club.id)")!,
+                            subject: Text(club.name),
+                            message: Text("Check out \(club.name) on FindMyRun")
+                        ) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        Button("Back") {
+                            withAnimation(.spring(duration: 0.35, bounce: 0.15)) { selectedClubForDetail = nil }
+                        }
+                        .fontWeight(.semibold)
+                        .padding(.leading, 8)
+                    } else if isDetailShowing, let run = selectedRun {
                         Button { myRuns.toggle(run) } label: {
                             Image(systemName: myRuns.isSaved(run.id) ? "bookmark.fill" : "bookmark")
                                 .foregroundStyle(myRuns.isSaved(run.id) ? appSettings.themeColor : .secondary)
@@ -112,47 +141,104 @@ struct FavoritesPageView: View {
                         } else if favorites.favoriteClubIds.isEmpty {
                             ContentUnavailableView("No Favourite Clubs", systemImage: "star",
                                 description: Text("Use the search tab to find and star clubs."))
-                        } else if groupedRuns.isEmpty {
+                        } else if groupedRuns.isEmpty && clubsWithNoRuns.isEmpty {
                             ContentUnavailableView("No Upcoming Runs", systemImage: "figure.run.circle",
                                 description: Text("Your favourite clubs don't have any runs scheduled right now."))
                         } else {
                             ScrollView {
-                                LazyVStack(spacing: 16, pinnedViews: .sectionHeaders) {
+                                LazyVStack(spacing: 16) {
+                                    // Clubs with no upcoming runs
+                                    ForEach(clubsWithNoRuns) { club in
+                                        HStack(spacing: 10) {
+                                            Button {
+                                                withAnimation(.spring(duration: 0.3)) {
+                                                    favorites.toggle(club.id)
+                                                }
+                                            } label: {
+                                                Image(systemName: "minus.circle.fill")
+                                                    .font(.title3)
+                                                    .foregroundStyle(.red)
+                                            }
+                                            .buttonStyle(.plain)
+
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(club.name)
+                                                    .font(.subheadline).fontWeight(.semibold)
+                                                    .foregroundStyle(.primary)
+                                                Text("No upcoming runs")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                            Spacer()
+                                            Button { selectedClubForDetail = club } label: {
+                                                Image(systemName: "info.circle")
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 12)
+                                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
+                                    }
+
                                     ForEach(groupedRuns, id: \.club.id) { group in
-                                        Section {
-                                            ForEach(group.runs) { run in
-                                                if selectedRun?.id != run.id {
-                                                    RunRowView(run: run)
-                                                        .matchedGeometryEffect(id: run.id, in: animation)
-                                                        .onTapGesture {
-                                                            withAnimation(.spring(duration: 0.4, bounce: 0.15)) { selectedRun = run }
+                                        let isCollapsed = collapsedClubs.contains(group.club.id)
+                                        VStack(spacing: 10) {
+                                            // Club header with collapse toggle + remove button
+                                            HStack(spacing: 10) {
+                                                // Remove from favourites
+                                                Button {
+                                                    withAnimation(.spring(duration: 0.3)) {
+                                                        favorites.toggle(group.club.id)
+                                                    }
+                                                } label: {
+                                                    Image(systemName: "minus.circle.fill")
+                                                        .font(.title3)
+                                                        .foregroundStyle(.red)
+                                                }
+                                                .buttonStyle(.plain)
+
+                                                // Club name + run count — tap to collapse/expand
+                                                Button {
+                                                    withAnimation(.spring(duration: 0.3, bounce: 0.15)) {
+                                                        if isCollapsed {
+                                                            collapsedClubs.remove(group.club.id)
+                                                        } else {
+                                                            collapsedClubs.insert(group.club.id)
                                                         }
-                                                } else {
-                                                    Color.clear.frame(height: 100)
+                                                    }
+                                                } label: {
+                                                    HStack(spacing: 6) {
+                                                        Text(group.club.name)
+                                                            .font(.subheadline).fontWeight(.semibold)
+                                                            .foregroundStyle(appSettings.themeColor)
+                                                        Spacer()
+                                                        Text("\(group.runs.count) run\(group.runs.count == 1 ? "" : "s")")
+                                                            .font(.caption).foregroundStyle(.secondary)
+                                                        Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                                                            .font(.caption2)
+                                                            .foregroundStyle(.secondary)
+                                                    }
+                                                }
+                                                .buttonStyle(.plain)
+                                            }
+                                            .padding(.horizontal, 14)
+                                            .padding(.vertical, 12)
+                                            .background(appSettings.themeColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+
+                                            if !isCollapsed {
+                                                ForEach(group.runs) { run in
+                                                    if selectedRun?.id != run.id {
+                                                        RunRowView(run: run, onClubInfoTapped: { selectedClubForDetail = $0 })
+                                                            .matchedGeometryEffect(id: run.id, in: animation)
+                                                            .onTapGesture {
+                                                                withAnimation(.spring(duration: 0.4, bounce: 0.15)) { selectedRun = run }
+                                                            }
+                                                    } else {
+                                                        Color.clear.frame(height: 100)
+                                                    }
                                                 }
                                             }
-                                        } header: {
-                                            HStack {
-                                                Text(group.club.name)
-                                                    .font(.caption).fontWeight(.semibold)
-                                                    .padding(.horizontal, 12)
-                                                    .padding(.vertical, 6)
-                                                    .background(appSettings.themeColor.opacity(0.12), in: Capsule())
-                                                    .foregroundStyle(appSettings.themeColor)
-                                                Spacer()
-                                                Button {
-                                                    favorites.toggle(group.club.id)
-                                                } label: {
-                                                    Image(systemName: "star.fill")
-                                                        .font(.caption).foregroundStyle(.yellow)
-                                                }.buttonStyle(.plain)
-                                                Text("\(group.runs.count) run\(group.runs.count == 1 ? "" : "s")")
-                                                    .font(.caption).foregroundStyle(.secondary)
-                                                    .padding(.leading, 8)
-                                            }
-                                            .padding(.horizontal)
-                                            .padding(.vertical, 4)
-                                            .background(Color(.systemBackground))
                                         }
                                     }
                                 }
@@ -166,6 +252,9 @@ struct FavoritesPageView: View {
 
                     if let run = selectedRun {
                         detailOverlay(run: run).transition(.identity)
+                    }
+                    if let club = selectedClubForDetail {
+                        ClubDetailScreen(club: club).transition(.identity)
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 20))
@@ -186,10 +275,6 @@ struct FavoritesPageView: View {
             guard !favorites.favoriteClubIds.isEmpty else { favService.runs = []; return }
             await favService.fetchAllUpcoming()
         }
-        .sheet(item: $selectedClubForDetail) { club in
-            ClubDetailCard(club: club, favorites: favorites)
-                .environment(appSettings)
-        }
     }
 
     @ViewBuilder
@@ -204,7 +289,8 @@ struct FavoritesPageView: View {
                 } else { mapFallback(for: run) }
             } else { mapFallback(for: run) }
 
-            RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast)
+            RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast,
+                       onClubInfoTapped: { selectedClubForDetail = $0 })
                 .matchedGeometryEffect(id: run.id, in: animation)
                 .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
                 .padding(.horizontal)
@@ -233,7 +319,7 @@ struct FavoritesPageView: View {
             .mapStyle(.standard(elevation: .realistic))
             .ignoresSafeArea(edges: .bottom)
         } else {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.appBackground.ignoresSafeArea()
                 .overlay {
                     VStack(spacing: 12) {
                         Image(systemName: "map").font(.system(size: 48)).foregroundStyle(.tertiary)

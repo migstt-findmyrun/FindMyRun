@@ -70,6 +70,14 @@ struct ContentView: View {
             .environment(notifications)
             .environment(appSettings)
 
+            // Settings overlay — shown inline so tab bar stays visible
+            if showSettings {
+                SettingsView(onDismiss: { showSettings = false })
+                    .environment(appSettings)
+                    .environment(notifications)
+                    .transition(.opacity)
+            }
+
             // Floating tab bar — card width, slightly into safe area
             floatingTabBar
                 .padding(.horizontal, 12)
@@ -113,11 +121,6 @@ struct ContentView: View {
             ClubDetailCard(club: club, favorites: favorites)
                 .environment(appSettings)
         }
-        .sheet(isPresented: $showSettings) {
-            SettingsView()
-                .environment(appSettings)
-                .environment(notifications)
-        }
         .onAppear {
             guard let tab = UserDefaults(suiteName: SharedRunStore.appGroupID)?.string(forKey: "siriRequestedTab") else { return }
             UserDefaults(suiteName: SharedRunStore.appGroupID)?.removeObject(forKey: "siriRequestedTab")
@@ -152,15 +155,25 @@ struct ContentView: View {
                 .padding(.horizontal, 4)
 
             Button {
-                showSettings = true
+                withAnimation(.spring(duration: 0.3, bounce: 0.2)) {
+                    showSettings.toggle()
+                }
             } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 24, weight: .light))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 2)
+                ZStack {
+                    if showSettings {
+                        Circle()
+                            .fill(.white)
+                            .frame(width: 50, height: 50)
+                    }
+                    Image(systemName: showSettings ? "gearshape.fill" : "gearshape")
+                        .font(.system(size: 24, weight: .light))
+                        .foregroundStyle(showSettings ? .black : .white)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 2)
             }
             .buttonStyle(.plain)
+            .animation(.spring(duration: 0.3, bounce: 0.2), value: showSettings)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 7)
@@ -177,9 +190,10 @@ struct ContentView: View {
 
     @ViewBuilder
     private func tabBarButton(tab: AppTab, icon: String, activeIcon: String) -> some View {
-        let isActive = selectedTab == tab
+        let isActive = selectedTab == tab && !showSettings
         Button {
             withAnimation(.spring(duration: 0.3, bounce: 0.2)) {
+                showSettings = false
                 selectedTab = tab
             }
         } label: {

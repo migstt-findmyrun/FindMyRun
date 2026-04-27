@@ -22,6 +22,7 @@ struct MapPageView: View {
     @Environment(MyRunsManager.self) private var myRuns
     @Environment(NotificationManager.self) private var notifications
     @State private var selectedRun: Run?
+    @State private var selectedClubForDetail: Club?
     @State private var cameraPosition: MapCameraPosition = .region(MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 43.6532, longitude: -79.3832),
         span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.15)
@@ -98,7 +99,7 @@ struct MapPageView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.appBackground.ignoresSafeArea()
 
             mapView
                 .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
@@ -164,21 +165,22 @@ struct MapPageView: View {
         .task(id: locationService.location?.latitude) {
             if !userHasPanned { recenter() }
         }
+        // Fires on first appear AND whenever searchCenter changes — handles the case
+        // where MapPageView is recreated from scratch when switching tabs.
+        .task(id: searchCenter?.latitude) {
+            guard let coord = searchCenter, searchOverride != nil else { return }
+            let span = (10.0 / 111.0) * 2.3
+            isProgrammaticMove = true
+            userHasPanned = true
+            withAnimation {
+                cameraPosition = .region(MKCoordinateRegion(
+                    center: coord,
+                    span: MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span)
+                ))
+            }
+        }
         .onChange(of: searchOverride?.count) { oldCount, newCount in
-            if newCount != nil && oldCount == nil {
-                // Results just applied — center to custom search location if provided
-                if let coord = searchCenter {
-                    let span = (10.0 / 111.0) * 2.3
-                    isProgrammaticMove = true
-                    userHasPanned = true
-                    withAnimation {
-                        cameraPosition = .region(MKCoordinateRegion(
-                            center: coord,
-                            span: MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span)
-                        ))
-                    }
-                }
-            } else if newCount == nil && oldCount != nil {
+            if newCount == nil && oldCount != nil {
                 // Results cleared — recenter to user location
                 searchCenter = nil
                 userHasPanned = false
@@ -244,19 +246,43 @@ struct MapPageView: View {
     private func runDetailCard(run: Run) -> some View {
         VStack(spacing: 0) {
             HStack {
-                Button { myRuns.toggle(run) } label: {
-                    Image(systemName: myRuns.isSaved(run.id) ? "bookmark.fill" : "bookmark")
-                        .foregroundStyle(myRuns.isSaved(run.id) ? appSettings.themeColor : .secondary)
+                if let club = selectedClubForDetail {
+                    Button { favorites.toggle(club.id) } label: {
+                        Image(systemName: favorites.isFavorite(club.id) ? "star.fill" : "star")
+                            .foregroundStyle(favorites.isFavorite(club.id) ? .yellow : Color(.tertiaryLabel))
+                            .animation(.spring(duration: 0.2), value: favorites.isFavorite(club.id))
+                    }
+                    Spacer()
+                    ShareLink(
+                        item: URL(string: "https://\(ContentView.shareDomain)/club/\(club.id)")!,
+                        subject: Text(club.name),
+                        message: Text("Check out \(club.name) on FindMyRun")
+                    ) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    Button("Back") {
+                        withAnimation(.spring(duration: 0.35, bounce: 0.15)) { selectedClubForDetail = nil }
+                    }
+                    .fontWeight(.semibold)
+                    .padding(.leading, 8)
+                } else {
+                    Button { myRuns.toggle(run) } label: {
+                        Image(systemName: myRuns.isSaved(run.id) ? "bookmark.fill" : "bookmark")
+                            .foregroundStyle(myRuns.isSaved(run.id) ? appSettings.themeColor : .secondary)
+                    }
+                    Spacer()
+                    ShareLink(item: URL(string: "https://\(ContentView.shareDomain)/run/\(run.id)")!) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    Button("Back") {
+                        withAnimation(.spring(duration: 0.35, bounce: 0.15)) {
+                            selectedRun = nil
+                            selectedClubForDetail = nil
+                        }
+                    }
+                    .fontWeight(.semibold)
+                    .padding(.leading, 8)
                 }
-                Spacer()
-                ShareLink(item: URL(string: "https://\(ContentView.shareDomain)/run/\(run.id)")!) {
-                    Image(systemName: "square.and.arrow.up")
-                }
-                Button("Back") {
-                    withAnimation(.spring(duration: 0.35, bounce: 0.15)) { selectedRun = nil }
-                }
-                .fontWeight(.semibold)
-                .padding(.leading, 8)
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)
@@ -274,10 +300,17 @@ struct MapPageView: View {
                     } else { mapDetailFallback(for: run) }
                 } else { mapDetailFallback(for: run) }
 
-                RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast)
+                RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast,
+                           onClubInfoTapped: { selectedClubForDetail = $0 })
+                    .opacity(selectedClubForDetail != nil ? 0.3 : 1)
+                    .allowsHitTesting(selectedClubForDetail == nil)
                     .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
                     .padding(.horizontal)
                     .padding(.top, 8)
+
+                if let club = selectedClubForDetail {
+                    ClubDetailScreen(club: club).transition(.identity)
+                }
             }
             .clipShape(RoundedRectangle(cornerRadius: 20))
         }
@@ -305,7 +338,7 @@ struct MapPageView: View {
             .mapStyle(.standard(elevation: .realistic))
             .ignoresSafeArea(edges: .bottom)
         } else {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.appBackground.ignoresSafeArea()
                 .overlay {
                     VStack(spacing: 12) {
                         Image(systemName: "map").font(.system(size: 48)).foregroundStyle(.tertiary)
@@ -375,7 +408,7 @@ struct MapPageView: View {
                 .padding(.vertical, 10)
                 .background(
                     Capsule()
-                        .fill(isActive ? .white : .black)
+                        .fill(isActive ? Color.white : Color.black)
                         .overlay(Capsule().stroke(.white.opacity(0.18), lineWidth: 1))
                 )
                 .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
@@ -412,29 +445,52 @@ struct RunDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(MyRunsManager.self) private var myRuns
     @Environment(AppSettings.self) private var appSettings
+    @Environment(FavoritesManager.self) private var favorites
+    @State private var selectedClubForDetail: Club?
     @State private var forecast: DayForecast?
     @State private var isFetchingForecast = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.appBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    Button {
-                        myRuns.toggle(run)
-                    } label: {
-                        Image(systemName: myRuns.isSaved(run.id) ? "bookmark.fill" : "bookmark")
-                            .foregroundStyle(myRuns.isSaved(run.id) ? appSettings.themeColor : .secondary)
-                    }
-                    Spacer()
-                    ShareLink(item: URL(string: "https://\(ContentView.shareDomain)/run/\(run.id)")!) {
-                        Image(systemName: "square.and.arrow.up")
-                    }
-                    Button("Done") { dismiss() }
+                    if let club = selectedClubForDetail {
+                        Button { favorites.toggle(club.id) } label: {
+                            Image(systemName: favorites.isFavorite(club.id) ? "star.fill" : "star")
+                                .foregroundStyle(favorites.isFavorite(club.id) ? .yellow : Color(.tertiaryLabel))
+                                .animation(.spring(duration: 0.2), value: favorites.isFavorite(club.id))
+                        }
+                        Spacer()
+                        ShareLink(
+                            item: URL(string: "https://\(ContentView.shareDomain)/club/\(club.id)")!,
+                            subject: Text(club.name),
+                            message: Text("Check out \(club.name) on FindMyRun")
+                        ) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        Button("Back") {
+                            withAnimation(.spring(duration: 0.35, bounce: 0.15)) { selectedClubForDetail = nil }
+                        }
                         .fontWeight(.semibold)
                         .padding(.leading, 8)
+                    } else {
+                        Button {
+                            myRuns.toggle(run)
+                        } label: {
+                            Image(systemName: myRuns.isSaved(run.id) ? "bookmark.fill" : "bookmark")
+                                .foregroundStyle(myRuns.isSaved(run.id) ? appSettings.themeColor : .secondary)
+                        }
+                        Spacer()
+                        ShareLink(item: URL(string: "https://\(ContentView.shareDomain)/run/\(run.id)")!) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        Button("Done") { dismiss() }
+                            .fontWeight(.semibold)
+                            .padding(.leading, 8)
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
@@ -456,10 +512,17 @@ struct RunDetailSheet: View {
                         mapFallback
                     }
 
-                    RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast)
+                    RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast,
+                               onClubInfoTapped: { selectedClubForDetail = $0 })
+                        .opacity(selectedClubForDetail != nil ? 0.3 : 1)
+                        .allowsHitTesting(selectedClubForDetail == nil)
                         .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
                         .padding(.horizontal)
                         .padding(.top, 8)
+
+                    if let club = selectedClubForDetail {
+                        ClubDetailScreen(club: club).transition(.identity)
+                    }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 20))
             }
@@ -493,7 +556,7 @@ struct RunDetailSheet: View {
             .mapStyle(.standard(elevation: .realistic))
             .ignoresSafeArea(edges: .bottom)
         } else {
-            Color(.systemGroupedBackground)
+            Color.appBackground
                 .ignoresSafeArea()
                 .overlay {
                     VStack(spacing: 12) {

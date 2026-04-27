@@ -78,12 +78,31 @@ struct SearchPageView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.appBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    if isDetailShowing, let run = selectedRun {
+                    if let club = selectedClubForDetail {
+                        Button { favorites.toggle(club.id) } label: {
+                            Image(systemName: favorites.isFavorite(club.id) ? "star.fill" : "star")
+                                .foregroundStyle(favorites.isFavorite(club.id) ? .yellow : Color(.tertiaryLabel))
+                                .animation(.spring(duration: 0.2), value: favorites.isFavorite(club.id))
+                        }
+                        Spacer()
+                        ShareLink(
+                            item: URL(string: "https://\(ContentView.shareDomain)/club/\(club.id)")!,
+                            subject: Text(club.name),
+                            message: Text("Check out \(club.name) on FindMyRun")
+                        ) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        Button("Back") {
+                            withAnimation(.spring(duration: 0.35, bounce: 0.15)) { selectedClubForDetail = nil }
+                        }
+                        .fontWeight(.semibold)
+                        .padding(.leading, 8)
+                    } else if isDetailShowing, let run = selectedRun {
                         Button { myRuns.toggle(run) } label: {
                             Image(systemName: myRuns.isSaved(run.id) ? "bookmark.fill" : "bookmark")
                                 .foregroundStyle(myRuns.isSaved(run.id) ? appSettings.themeColor : .secondary)
@@ -125,9 +144,9 @@ struct SearchPageView: View {
 
                 ZStack {
                     if searchMode == .clubs {
-                        ScrollView {
-                            clubsSearchContent
-                        }
+                        ScrollView { clubsSearchContent }
+                            .opacity(selectedClubForDetail != nil ? 0.3 : 1)
+                            .allowsHitTesting(selectedClubForDetail == nil)
                     } else {
                         ScrollViewReader { proxy in
                             ScrollView {
@@ -153,12 +172,19 @@ struct SearchPageView: View {
                                 }
                             }
                         }
-                        .opacity(isDetailShowing ? 0.3 : 1)
-                        .allowsHitTesting(!isDetailShowing)
+                        .opacity(isDetailShowing || selectedClubForDetail != nil ? 0.3 : 1)
+                        .allowsHitTesting(!isDetailShowing && selectedClubForDetail == nil)
 
                         if let run = selectedRun {
-                            detailOverlay(run: run).transition(.identity)
+                            detailOverlay(run: run)
+                                .opacity(selectedClubForDetail != nil ? 0.3 : 1)
+                                .allowsHitTesting(selectedClubForDetail == nil)
+                                .transition(.identity)
                         }
+                    }
+
+                    if let club = selectedClubForDetail {
+                        ClubDetailScreen(club: club).transition(.identity)
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 20))
@@ -179,10 +205,6 @@ struct SearchPageView: View {
             guard let req = siriRequest else { return }
             siriRequest = nil  // consume it
             applySiriRequest(req)
-        }
-        .sheet(item: $selectedClubForDetail) { club in
-            ClubDetailCard(club: club, favorites: favorites)
-                .environment(appSettings)
         }
     }
 
@@ -403,7 +425,7 @@ struct SearchPageView: View {
             } else {
                 ForEach(searchResults) { run in
                     if selectedRun?.id != run.id {
-                        RunRowView(run: run)
+                        RunRowView(run: run, onClubInfoTapped: { selectedClubForDetail = $0 })
                             .matchedGeometryEffect(id: run.id, in: animation)
                             .onTapGesture {
                                 withAnimation(.spring(duration: 0.4, bounce: 0.15)) { selectedRun = run }
@@ -499,14 +521,13 @@ struct SearchPageView: View {
                 Text("\(count) members")
                     .font(.caption2).foregroundStyle(.tertiary)
             }
-            Image(systemName: "chevron.right")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+            Button { selectedClubForDetail = club } label: {
+                Image(systemName: "info.circle").foregroundStyle(.secondary)
+            }.buttonStyle(.plain)
         }
         .padding(14)
         .background(.background, in: RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
-        .onTapGesture { selectedClubForDetail = club }
     }
 
     // MARK: - Sub-view helpers
@@ -574,7 +595,8 @@ struct SearchPageView: View {
                 } else { mapFallback(for: run) }
             } else { mapFallback(for: run) }
 
-            RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast)
+            RunRowView(run: run, forecast: forecast, isFetchingForecast: isFetchingForecast,
+                       onClubInfoTapped: { selectedClubForDetail = $0 })
                 .matchedGeometryEffect(id: run.id, in: animation)
                 .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
                 .padding(.horizontal)
@@ -603,7 +625,7 @@ struct SearchPageView: View {
             .mapStyle(.standard(elevation: .realistic))
             .ignoresSafeArea(edges: .bottom)
         } else {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color.appBackground.ignoresSafeArea()
                 .overlay {
                     VStack(spacing: 12) {
                         Image(systemName: "map").font(.system(size: 48)).foregroundStyle(.tertiary)
